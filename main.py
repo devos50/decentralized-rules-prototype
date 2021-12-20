@@ -1,77 +1,57 @@
-import re
+"""
+Testing out a bare-bones scoring mechanism around voting and decentralized content rules.
+"""
+from core.content import Content
+from core.rule import Rule
+from core.user import User
 
-content = []
+NUM_RULES = 1
+NUM_USERS = 2
+NUM_CONTENT = 1
+
+# Create rules
 rules = []
+for rule_ind in range(NUM_RULES):
+    rules.append(Rule("Tag %d" % rule_ind))
 
+# Create content
+content = []
+for content_ind in range(NUM_CONTENT):
+    content.append("%d" % content_ind)
 
-class Content:
+# Create users
+users = []
+for user_ind in range(1, NUM_USERS + 1):
+    user = User("%d" % user_ind)
+    user.rules_db.add_rules(rules)
+    for content_item in content:
+        user.content_db.add_content(Content(content_item))
 
-    def __init__(self, name):
-        self.name = name
-        self.tags = []
+    user.apply_rules()  # Generate the tags
+    users.append(user)
 
+# Create some votes
+for user in users:
+    for content_item in user.content_db.get_all_content():
+        for tag in content_item.tags:
+            user.vote(tag, True)
 
-class Rule:
+# Create a strongly connected graph
+for user_a in users:
+    for user_b in users:
+        if user_a == user_b:
+            continue
+        user_a.connect(user_b)
 
-    def __init__(self, regexes, tag_output_template):
-        self.regexes = regexes
-        self.tag_output_template = tag_output_template
+rounds = 1
+for round in range(1, rounds + 1):
+    print("Evaluating round %d" % round)
+    # For each user, get the voting history of other users and compute the correlation between voting histories
+    for user in users:
+        for neighbour in user.neighbours:
+            # User queries neighbour
+            neighbour_votes = neighbour.votes_db.get_random_votes(neighbour.identifier)
+            user.votes_db.add_votes(neighbour_votes)
 
-    def apply(self, content):
-        print("Applying rule to %s" % content.name)
-        matches = []
-        for ind, regex_set in enumerate(self.regexes):
-            for regex in regex_set:
-                print("applying %s on %s" % (regex, matches))
-                if ind == 0:
-                    cur_matches = list(re.finditer(regex, content.name, re.IGNORECASE))
-                else:
-                    cur_matches = list(re.finditer(regex, matches[0], re.IGNORECASE))
-
-                if cur_matches:
-                    groups = cur_matches[0].groups()
-                    if not groups:
-                        match = cur_matches[0].group()
-                    else:
-                        match = cur_matches[0].groups()[0]
-                    matches = [match]
-
-            if not matches:
-                break
-
-        if matches:
-            self.generate_tags(content, matches)
-
-    def generate_tags(self, content, matches):
-        content.tags.append(self.tag_output_template % int(matches[0]))
-
-
-content.append(Content("Torrent.Name.S02E01.Something.PROPER.HDTV.x264.mkv"))
-
-# Create a rule that generates a season tag
-season_regexes = [[
-    '\\ss?(\\d{1,2})\\s\\-\\s\\d{1,2}\\s',
-    '\\b(?:Complete[\\.\\s\\-\\+_\\/(),]*)?[\\.\\s\\-\\+_\\/(),]*(?:s(?:easons?)?)[\\.\\s\\-\\+_\\/(),]*(?:s?[0-9]{1,2}[\\s]*(?:(?:\\-|(?:\\s*to\\s*))[\\s]*s?[0-9]{1,2})+)(?:[\\.\\s\\-\\+_\\/(),]*Complete)?\\b',
-    '(?:s\\d{1,2}[.+\\s]*){2,}\\b',
-    '\\b(?:Complete[\\.\\s\\-\\+_\\/(),])?s([0-9]{1,2})(?:(?<![a-z])(?:e|ep)(?:[0-9]{1,2}(?:-?(?:e|ep)?(?:[0-9]{1,2}))?)(?![0-9])|\\s\\-\\s\\d{1,3}\\s|\\b[0-9]{1,2}x([0-9]{2})\\b|\\bepisod(?:e|io)[\\.\\s\\-\\+_\\/(),]\\d{1,2}\\b)?\\b',
-    '\\b([0-9]{1,2})x[0-9]{2}\\b', '[0-9]{1,2}(?:st|nd|rd|th)[\\.\\s\\-\\+_\\/(),]season',
-    'Series[\\.\\s\\-\\+_\\/(),]\\d{1,2}',
-    '\\b(?:Complete[\\.\\s\\-\\+_\\/(),])?Season[\\. -][0-9]{1,2}\\b'], [
-    r"[0-9]+"
-]]
-rules.append(Rule(season_regexes, "Season %s"))
-
-episode_regexes = [[
-    "(?<![a-z])(?:e|ep)(?:[0-9]{1,2}(?:-?(?:e|ep)?(?:[0-9]{1,2}))?)(?![0-9])",
-    "\s\-\s\d{1,3}\s",
-    r"\b[0-9]{1,2}x([0-9]{2})\b",
-    r"\bepisod(?:e|io)[\.\s\-\+_\/(),]\d{1,2}\b"], [
-    r"[0-9]+"
-]]
-rules.append(Rule(episode_regexes, "Episode %s"))
-
-for content in content:
-    for rule in rules:
-        rule.apply(content)
-
-    print("Tags: %s" % content.tags)
+            # TODO only update the affected items and not the entire database
+            user.recompute_reputations()
