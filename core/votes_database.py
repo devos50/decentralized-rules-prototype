@@ -58,6 +58,7 @@ class VotesDatabase:
         """
         Compute the correlation coefficient from the perspective of this user.
         """
+        #print("Computing correlation between user %s and %s" % (user_a, user_b))
         votes_agree, votes_conflict = Vote.get_overlap(self.get_votes_for_user(user_a), self.get_votes_for_user(user_b))
         total_vote_pairs = len(votes_agree) + len(votes_conflict)
         if total_vote_pairs == 0:
@@ -77,6 +78,7 @@ class VotesDatabase:
 
         a = a_abs / total_vote_pairs
         b = b_abs / total_vote_pairs
+        #print("Vote pairs: %d, p: %d, a: %d, b: %d" % (total_vote_pairs, p_abs, a_abs, b_abs))
 
         # If a or b is 0 or 1, a user voted positively or negatively on all objects. In this case, rho is undefined.
         # In this case, we simply compute the fraction of votes that agree and project this fraction to the interval

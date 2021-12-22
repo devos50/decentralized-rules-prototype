@@ -3,6 +3,8 @@ Testing out a bare-bones scoring mechanism around voting and decentralized conte
 """
 import random
 
+import networkx as nx
+
 from core.content import Content
 from core.rule import Rule
 from core.user import User, UserType
@@ -45,11 +47,11 @@ for user in users:
 
 # Create some votes
 for user in users:
-    vote = True
-    if user.type == UserType.RANDOM_VOTES:
-        vote = bool(random.randint(0, 1))
     for content_item in user.content_db.get_all_content():
         for tag in content_item.tags:
+            vote = True
+            if user.type == UserType.RANDOM_VOTES:
+                vote = bool(random.randint(0, 1))
             user.vote(tag, vote)
 
 
@@ -60,7 +62,7 @@ for user_a in users:
             continue
         user_a.connect(user_b)
 
-rounds = 1
+rounds = 5
 for round in range(1, rounds + 1):
     print("Evaluating round %d" % round)
     # For each user, get the voting history of other users and compute the correlation between voting histories
@@ -73,6 +75,40 @@ for round in range(1, rounds + 1):
         # TODO only update the affected items and not the entire database
         user.recompute_reputations()
 
+
+def get_user_by_id(user_id):
+    for user in users:
+        if user.identifier == user_id:
+            return user
+    return None
+
+
+# Create correlation graph
+G = nx.DiGraph()
+for user in users:
+    if not G.has_node(user.identifier):
+        G.add_node(user.identifier, type=user.type, color="red" if user.type != UserType.HONEST else "black")
+
+    if user.type != UserType.HONEST:
+        continue  # We don't care about the outgoing trust edges of adversaries
+
+    for other_user_id, correlation in user.votes_db.correlation_scores.items():
+        if user.identifier == other_user_id:
+            continue
+        if not G.has_node(other_user_id):
+            other_user = get_user_by_id(other_user_id)
+            G.add_node(other_user_id, type=user.type, color="red" if other_user.type != UserType.HONEST else "black")
+        edge_color = "black"
+        if correlation < -0.5:
+            edge_color = "red"
+        elif correlation > 0.5:
+            edge_color = "darkgreen"
+
+        line_thick = max(0.2, abs(correlation) * 1.5)
+
+        G.add_edge(user.identifier, other_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
+
+nx.nx_pydot.write_dot(G, "data/correlations.dot")
 
 # Print reputations
 for user in users:
