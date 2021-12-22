@@ -3,13 +3,8 @@ from random import Random
 
 class Rule:
 
-    def __init__(self, output_tag, coverage=1):
-        """
-        Create a rule.
-        :param output_tag: The output tag that this rule applies to content.
-        :param coverage: The coverage of the rule, which is a value between 0 and 1. Indicates the fraction to which
-        the rule applies to content.
-        """
+    def __init__(self, rule_id, output_tag, coverage=1):
+        self.rule_id = rule_id
         self.output_tag = output_tag
         self.reputation_score = 0
         self.coverage = coverage
@@ -22,5 +17,10 @@ class Rule:
         self.applicable_content_ids = sorted(rand.sample(content_ids, items_to_sample))
         print("Rule %s applies to: %s" % (hash(self), self.applicable_content_ids))
 
+    def get_copy(self):
+        r = Rule(self.rule_id, self.output_tag, self.coverage)
+        r.applicable_content_ids = self.applicable_content_ids
+        return r
+
     def __hash__(self):
-        return hash(self.output_tag)
+        return self.rule_id

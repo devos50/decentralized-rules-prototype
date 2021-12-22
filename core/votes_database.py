@@ -48,7 +48,8 @@ class VotesDatabase:
         """
         self.correlation_scores = {}
         for other_peer_id in self.votes.keys():
-            self.correlation_scores[other_peer_id] = self.compute_correlation_coefficient(self.my_id, other_peer_id)
+            correlation = self.compute_correlation_coefficient(self.my_id, other_peer_id)
+            self.correlation_scores[other_peer_id] = correlation
 
     def get_correlation_coefficient(self, other_user_id):
         return self.correlation_scores[other_user_id] if other_user_id in self.correlation_scores else 0
