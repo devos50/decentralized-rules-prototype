@@ -24,7 +24,7 @@ class User:
         vote = Vote(self.identifier, tag.cid, tag.name, tag.rules, is_accurate)
         self.votes_db.add_vote(vote)
 
-    def apply_rules(self):
+    def apply_rules_to_content(self):
         for rule in self.rules_db.get_all_rules():
             self.content_db.apply_rule(rule)
 

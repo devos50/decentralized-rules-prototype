@@ -14,6 +14,9 @@ class Content:
         return None
 
     def apply_rule(self, rule):
+        if hash(self) not in rule.applicable_content_ids:
+            return
+
         tag = self.get_tag_with_name(rule.output_tag)
         if not tag:
             tag = Tag(rule.output_tag, hash(self))
@@ -21,4 +24,4 @@ class Content:
         tag.rules.append(hash(rule))
 
     def __hash__(self):
-        return hash(self.name)
+        return int(self.name)

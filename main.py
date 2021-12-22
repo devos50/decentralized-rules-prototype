@@ -5,14 +5,16 @@ from core.content import Content
 from core.rule import Rule
 from core.user import User
 
-NUM_RULES = 1
-NUM_USERS = 2
-NUM_CONTENT = 1
+NUM_RULES = 2
+NUM_USERS = 3
+NUM_CONTENT = 10
 
 # Create rules
 rules = []
 for rule_ind in range(NUM_RULES):
-    rules.append(Rule("Tag %d" % rule_ind))
+    rule = Rule("Tag %d" % rule_ind)
+    rule.determine_applicable_content(NUM_CONTENT)
+    rules.append(rule)
 
 # Create content
 content = []
@@ -23,12 +25,14 @@ for content_ind in range(NUM_CONTENT):
 users = []
 for user_ind in range(1, NUM_USERS + 1):
     user = User("%d" % user_ind)
-    user.rules_db.add_rules(rules)
     for content_item in content:
         user.content_db.add_content(Content(content_item))
-
-    user.apply_rules()  # Generate the tags
     users.append(user)
+
+# Distribute rules over users
+for user in users:
+    user.rules_db.add_rules(rules)
+    user.apply_rules_to_content()
 
 # Create some votes
 for user in users:
@@ -55,3 +59,10 @@ for round in range(1, rounds + 1):
 
             # TODO only update the affected items and not the entire database
             user.recompute_reputations()
+
+
+# Print reputations
+for user in users:
+    print("User %s:" % user.identifier)
+    for rule in user.rules_db.get_all_rules():
+        print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
