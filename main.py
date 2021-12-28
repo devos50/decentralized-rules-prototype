@@ -110,8 +110,16 @@ for user in users:
 
 nx.nx_pydot.write_dot(G, "data/correlations.dot")
 
-# Print reputations
-for user in users:
-    print("%s:" % user)
-    for rule in user.rules_db.get_all_rules():
-        print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
+with open("data/correlations.csv", "w") as correlations_file:
+    correlations_file.write("user_id,user_type,other_user_id,correlation\n")
+    for user in users:
+        for other_user_id, correlation in user.votes_db.correlation_scores.items():
+            correlations_file.write("%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, other_user_id, correlation))
+
+with open("data/reputations.csv", "w") as reputations_file:
+    reputations_file.write("user_id,user_type,rule_id,reputation\n")
+    for user in users:
+        print("%s:" % user)
+        for rule in user.rules_db.get_all_rules():
+            print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
+            reputations_file.write("%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, rule.rule_id, rule.reputation_score))
