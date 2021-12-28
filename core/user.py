@@ -2,6 +2,7 @@ from enum import Enum
 
 from core.content_database import ContentDatabase
 from core.rules_database import RulesDatabase
+from core.trust_database import TrustDatabase
 from core.vote import Vote
 from core.votes_database import VotesDatabase
 
@@ -18,6 +19,7 @@ class User:
         self.content_db = ContentDatabase()
         self.rules_db = RulesDatabase()
         self.votes_db = VotesDatabase(self.identifier)
+        self.trust_db = TrustDatabase(self.identifier, self.votes_db)
         self.neighbours = []
         self.type = user_type
 
@@ -38,7 +40,10 @@ class User:
 
     def recompute_reputations(self):
         # Compute correlations
-        self.votes_db.compute_correlations()
+        self.trust_db.compute_correlations()
+
+        # Compute max flows between pairs
+        self.trust_db.compute_flows()
 
         # Compute rule reputations
         for rule in self.rules_db.get_all_rules():
@@ -48,10 +53,29 @@ class User:
                 rule.reputation_score = 0
                 continue
 
+            rep_fractions = {}
+            num_votes_per_user = {}
             for vote in votes_for_rule:
-                reputation_score += self.votes_db.get_correlation_coefficient(vote.user_id)
+                if vote.user_id not in rep_fractions:
+                    rep_fractions[vote.user_id] = 0
+                    num_votes_per_user[vote.user_id] = 0
 
-            rule.reputation_score = reputation_score / len(votes_for_rule)
+                rep_fractions[vote.user_id] += self.trust_db.get_correlation_coefficient(self.identifier, vote.user_id)
+                num_votes_per_user[vote.user_id] += 1
+
+            # Normalize the personal scores
+            for user_id in rep_fractions.keys():
+                rep_fractions[user_id] /= num_votes_per_user[user_id]
+
+            # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
+            fsum = 0
+            reputation_score = 0
+            for user_id in rep_fractions.keys():
+                flow = self.trust_db.max_flows[user_id]
+                reputation_score += flow * rep_fractions[user_id]
+                fsum += flow
+
+            rule.reputation_score = reputation_score / fsum
 
     def __str__(self):
         user_status = "honest" if self.type == UserType.HONEST else "adversarial"

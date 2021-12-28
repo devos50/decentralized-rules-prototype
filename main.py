@@ -92,12 +92,15 @@ for user in users:
     if user.type != UserType.HONEST:
         continue  # We don't care about the outgoing trust edges of adversaries
 
-    for other_user_id, correlation in user.votes_db.correlation_scores.items():
-        if user.identifier == other_user_id:
+    for user_ids, correlation in user.trust_db.correlation_scores.items():
+        from_user_id, to_user_id = user_ids
+        if user.identifier != from_user_id:
             continue
-        if not G.has_node(other_user_id):
-            other_user = get_user_by_id(other_user_id)
-            G.add_node(other_user_id, type=user.type, color="red" if other_user.type != UserType.HONEST else "black")
+        if to_user_id == user.identifier:
+            continue
+        if not G.has_node(to_user_id):
+            other_user = get_user_by_id(to_user_id)
+            G.add_node(to_user_id, type=user.type, color="red" if other_user.type != UserType.HONEST else "black")
         edge_color = "black"
         if correlation < -0.5:
             edge_color = "red"
@@ -106,14 +109,14 @@ for user in users:
 
         line_thick = max(0.2, abs(correlation) * 1.5)
 
-        G.add_edge(user.identifier, other_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
+        G.add_edge(from_user_id, to_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
 
 nx.nx_pydot.write_dot(G, "data/correlations.dot")
 
 with open("data/correlations.csv", "w") as correlations_file:
     correlations_file.write("user_id,user_type,other_user_id,correlation\n")
     for user in users:
-        for other_user_id, correlation in user.votes_db.correlation_scores.items():
+        for other_user_id, correlation in user.trust_db.correlation_scores.items():
             correlations_file.write("%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, other_user_id, correlation))
 
 with open("data/reputations.csv", "w") as reputations_file:

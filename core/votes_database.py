@@ -1,7 +1,4 @@
-import math
 import random
-
-from core.vote import Vote
 
 
 class VotesDatabase:
@@ -10,7 +7,6 @@ class VotesDatabase:
         self.my_id = my_id
         self.votes = {}
         self.votes_for_rules = {}
-        self.correlation_scores = {}
 
     def add_vote(self, vote):
         if vote.user_id not in self.votes:
@@ -41,49 +37,3 @@ class VotesDatabase:
         if rule_id in self.votes_for_rules:
             return self.votes_for_rules[rule_id]
         return []
-
-    def compute_correlations(self):
-        """
-        Compute the correlation scores to all neighbours.
-        """
-        self.correlation_scores = {}
-        for other_peer_id in self.votes.keys():
-            correlation = self.compute_correlation_coefficient(self.my_id, other_peer_id)
-            self.correlation_scores[other_peer_id] = correlation
-
-    def get_correlation_coefficient(self, other_user_id):
-        return self.correlation_scores[other_user_id] if other_user_id in self.correlation_scores else 0
-
-    def compute_correlation_coefficient(self, user_a, user_b):
-        """
-        Compute the correlation coefficient from the perspective of this user.
-        """
-        #print("Computing correlation between user %s and %s" % (user_a, user_b))
-        votes_agree, votes_conflict = Vote.get_overlap(self.get_votes_for_user(user_a), self.get_votes_for_user(user_b))
-        total_vote_pairs = len(votes_agree) + len(votes_conflict)
-        if total_vote_pairs == 0:
-            return 0  # No overlap at all
-        a_abs, b_abs, p_abs = 0, 0, 0
-        for vote_a, vote_b in votes_agree:
-            if vote_a.is_accurate:
-                p_abs += 1
-        p = p_abs / total_vote_pairs
-
-        # Find number of positive votes from a and b respectively
-        for vote_a, vote_b in votes_agree.union(votes_conflict):
-            if vote_a.is_accurate:
-                a_abs += 1
-            if vote_b.is_accurate:
-                b_abs += 1
-
-        a = a_abs / total_vote_pairs
-        b = b_abs / total_vote_pairs
-        #print("Vote pairs: %d, p: %d, a: %d, b: %d" % (total_vote_pairs, p_abs, a_abs, b_abs))
-
-        # If a or b is 0 or 1, a user voted positively or negatively on all objects. In this case, rho is undefined.
-        # In this case, we simply compute the fraction of votes that agree and project this fraction to the interval
-        # [-1, 1].
-        if a == 0 or b == 0 or a == 1 or b == 1:
-            return (len(votes_agree) / total_vote_pairs) * 2 - 1
-
-        return (p - a * b) / math.sqrt(a * (1 - a) * b * (1 - b))
