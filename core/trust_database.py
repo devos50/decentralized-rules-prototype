@@ -61,7 +61,8 @@ class TrustDatabase:
         if a == 0 or b == 0 or a == 1 or b == 1:
             return (len(votes_agree) / total_vote_pairs) * 2 - 1
 
-        return (p - a * b) / math.sqrt(a * (1 - a) * b * (1 - b))
+        correlation = (p - a * b) / math.sqrt(a * (1 - a) * b * (1 - b))
+        return correlation
 
     def compute_flows(self):
         self.max_flows = {}

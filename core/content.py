@@ -14,7 +14,7 @@ class Content:
         return None
 
     def apply_rule(self, rule):
-        if hash(self) not in rule.applicable_content_ids:
+        if hash(self) not in rule.applicable_content_ids_correct and hash(self) not in rule.applicable_content_ids_incorrect:
             return
 
         tag = self.get_tag_with_name(rule.output_tag)

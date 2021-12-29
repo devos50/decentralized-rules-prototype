@@ -6,6 +6,8 @@ from core.content import Content
 from core.rule import Rule
 from core.user import User, UserType
 
+random.seed(42)
+
 
 class Experiment:
 
@@ -23,7 +25,7 @@ class Experiment:
 
     def create_rules(self):
         for rule_ind in range(1, self.settings.num_rules + 1):
-            rule = Rule(rule_ind, "Tag %d" % rule_ind)
+            rule = Rule(rule_ind, "Tag %d" % rule_ind, coverage=self.settings.rule_coverage, error_rate=self.settings.rule_error_rate)
             rule.determine_applicable_content(self.settings.num_content_items)
             self.rules.append(rule)
 
@@ -54,12 +56,33 @@ class Experiment:
     def create_votes(self):
         # Create some votes
         for user in self.users:
-            for content_item in user.content_db.get_all_content():
-                for tag in content_item.tags:
-                    vote = True
-                    if user.type == UserType.RANDOM_VOTES:
-                        vote = bool(random.randint(0, 1))
-                    user.vote(tag, vote)
+            print("Creating votes for %s" % user)
+
+            if user.type == UserType.HONEST:
+                tags = []
+                # Determine the set of tags we are going to vote on - depending on the user engagement
+                for content_item in user.content_db.get_all_content():
+                    for tag in content_item.tags:
+                        tags.append(tag)
+
+                for tag_to_vote_on in random.sample(tags, int(len(tags) * self.settings.user_engagement)):
+                    # Downvote if all rules incorrectly generated this tag
+                    vote = False
+                    for rule_id in tag_to_vote_on.rules:
+                        rule = user.rules_db.get_rule(rule_id)
+                        if hash(tag_to_vote_on.cid) in rule.applicable_content_ids_correct:
+                            vote = True
+                            break
+
+                    # Users sometimes vote wrong
+                    if random.random() < self.settings.user_vote_error_rate:
+                        vote = not vote
+
+                    user.vote(tag_to_vote_on, vote)
+            elif user.type == UserType.RANDOM_VOTES:
+                for content_item in user.content_db.get_all_content():
+                    for tag in content_item.tags:
+                        user.vote(tag, bool(random.randint(0, 1)))
 
     def connect_users(self):
         # Create a strongly connected graph
@@ -105,9 +128,12 @@ class Experiment:
         with open("data/correlations.csv", "w") as correlations_file:
             correlations_file.write("user_id,user_type,other_user_id,correlation\n")
             for user in self.users:
-                for other_user_id, correlation in user.trust_db.correlation_scores.items():
+                for user_ids, correlation in user.trust_db.correlation_scores.items():
+                    from_user_id, to_user_id = user_ids
+                    if from_user_id != user.identifier:
+                        continue
                     correlations_file.write(
-                        "%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, other_user_id, correlation))
+                        "%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, to_user_id, correlation))
 
     def write_reputations(self):
         with open("data/reputations.csv", "w") as reputations_file:
@@ -122,16 +148,16 @@ class Experiment:
     def write_tags(self):
         tags = {}
         for rule in self.rules:
-            for content_id in rule.applicable_content_ids:
+            for content_id in rule.applicable_content_ids_correct + rule.applicable_content_ids_incorrect:
                 if content_id not in tags:
                     tags[content_id] = []
-                tags[content_id].append((rule.output_tag, rule.rule_id))
+                tags[content_id].append((rule.output_tag, rule.rule_id, content_id in rule.applicable_content_ids_correct))
 
         with open("data/tags.csv", "w") as tags_file:
-            tags_file.write("content_id,tag,rule_id\n")
+            tags_file.write("content_id,tag,rule_id,is_correct\n")
             for content_id, tags in tags.items():
-                for tag, rule_id in tags:
-                    tags_file.write("%s,%s,%s\n" % (content_id, tag, rule_id))
+                for tag, rule_id, is_correct in tags:
+                    tags_file.write("%s,%s,%s,%s\n" % (content_id, tag, rule_id, "yes" if is_correct else "no"))
 
     def run(self):
         self.create_rules()

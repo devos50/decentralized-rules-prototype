@@ -18,11 +18,14 @@ class Vote:
         # TODO take into consideration that voting positively/negatively for the same rule AND the same tag is more significant than just voting for the rule
         for vote_a in votes_a:
             for vote_b in votes_b:
-                if set(vote_a.rules_ids).intersection(set(vote_b.rules_ids)):
-                    # Votes overlap
+                if vote_a.tag == vote_b.tag and vote_a.cid == vote_b.cid and set(vote_a.rules_ids).intersection(set(vote_b.rules_ids)):
+                    # Both votes endorse the same rule
                     if vote_a.is_accurate == vote_b.is_accurate:
                         in_agreement.add((vote_a, vote_b))
                     else:
                         in_conflict.add((vote_a, vote_b))
 
         return in_agreement, in_conflict
+
+    def __str__(self):
+        return "Vote(user %s, cid %s, rules: %s)" % (self.user_id, self.cid, self.rules_ids)
