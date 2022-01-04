@@ -166,13 +166,13 @@ class Experiment:
 
     def write_reputations(self):
         with open("data/reputations.csv", "w") as reputations_file:
-            reputations_file.write("user_id,user_type,rule_id,reputation\n")
+            reputations_file.write("user_id,user_type,rule_id,rule_type,reputation\n")
             for user in self.users:
                 print("%s:" % user)
                 for rule in user.rules_db.get_all_rules():
                     print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
                     reputations_file.write(
-                        "%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, rule.rule_id, rule.reputation_score))
+                        "%s,%d,%s,%d,%.3f\n" % (user.identifier, user.type.value, rule.rule_id, rule.type.value, rule.reputation_score))
 
     def write_tags(self):
         """

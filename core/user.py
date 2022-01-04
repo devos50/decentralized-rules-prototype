@@ -44,7 +44,6 @@ class User:
         """
         (re)compute the reputation of rules and tags.
         """
-        print("Computing reputations for %s" % self)
 
         # Compute correlations
         self.trust_db.compute_correlations(self.similarity_metric)
@@ -83,14 +82,11 @@ class User:
             for user_id in rep_fractions.keys():
                 rep_fractions[user_id] /= num_votes_per_user[user_id]
 
-            print(rep_fractions)
-
             # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
             fsum = 0
             reputation_score = 0
             for user_id in rep_fractions.keys():
                 flow = self.trust_db.max_flows[user_id]
-                print("Flow from %s to %s: %f" % (self, user_id, flow))
                 reputation_score += flow * rep_fractions[user_id]
                 fsum += flow
 
