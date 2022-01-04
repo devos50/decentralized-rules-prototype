@@ -57,6 +57,7 @@ class Experiment:
         # Create some votes
         for user in self.users:
             print("Creating votes for %s" % user)
+            num_votes = 0
 
             if user.type == UserType.HONEST:
                 tags = []
@@ -76,13 +77,17 @@ class Experiment:
 
                     # Users sometimes vote wrong
                     if random.random() < self.settings.user_vote_error_rate:
+                        print("User %s misvotes!" % user)
                         vote = not vote
 
                     user.vote(tag_to_vote_on, vote)
+                    num_votes += 1
             elif user.type == UserType.RANDOM_VOTES:
                 for content_item in user.content_db.get_all_content():
                     for tag in content_item.tags:
                         user.vote(tag, bool(random.randint(0, 1)))
+
+            print("Created %d votes for user %s" % (num_votes, user))
 
     def connect_users(self):
         # Create a strongly connected graph
