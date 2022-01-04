@@ -86,6 +86,9 @@ class TrustDatabase:
         flow_graph = nx.Graph()
         for user_ids, score in self.correlation_scores.items():
             from_user_id, to_user_id = user_ids
+            if from_user_id == self.my_id and to_user_id == self.my_id:
+                continue
+
             if from_user_id == self.my_id and to_user_id != self.my_id:
                 other_user_ids.add(to_user_id)
             flow_graph.add_edge(from_user_id, to_user_id, capacity=score)
@@ -94,8 +97,6 @@ class TrustDatabase:
             flow_value, _ = nx.maximum_flow(flow_graph, self.my_id, other_user_id)
             self.max_flows[other_user_id] = flow_value
 
-        # TODO: not sure if this is OK
-        self.max_flows[self.my_id] = 1
-
-    def get_flow_fraction(self, other_user_id):
-        return self.max_flows[other_user_id] / sum(self.max_flows.values())
+        # Your own flow is the sum of the flows to other nodes.
+        # It resembles the score when adding a 'shadow' node with the same outgoing connections as your node.
+        self.max_flows[self.my_id] = sum(self.max_flows.values())

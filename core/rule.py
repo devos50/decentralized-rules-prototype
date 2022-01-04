@@ -1,9 +1,15 @@
+from enum import Enum
 from random import Random
+
+
+class RuleType(Enum):
+    ACCURATE = 0  # An "accurate" rule is a rule created by a user with honest intentions (but can have some errors).
+    SPAM = 1      # A spam rule is a rule that creates an inaccurate tag on all content it can find.
 
 
 class Rule:
 
-    def __init__(self, rule_id, output_tag, coverage=1, error_rate=0):
+    def __init__(self, rule_id, output_tag, coverage=1, error_rate=0, rule_type=RuleType.ACCURATE):
         self.rule_id = rule_id
         self.output_tag = output_tag
         self.reputation_score = 0
@@ -11,6 +17,7 @@ class Rule:
         self.error_rate = error_rate
         self.applicable_content_ids_correct = []
         self.applicable_content_ids_incorrect = []
+        self.type = rule_type
 
     def determine_applicable_content(self, total_num_items):
         content_ids = list(range(total_num_items))
@@ -35,6 +42,7 @@ class Rule:
         r = Rule(self.rule_id, self.output_tag, self.coverage)
         r.applicable_content_ids_correct = self.applicable_content_ids_correct
         r.applicable_content_ids_incorrect = self.applicable_content_ids_incorrect
+        r.type = self.type
         return r
 
     def __hash__(self):

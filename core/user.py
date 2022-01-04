@@ -10,6 +10,7 @@ from core.votes_database import VotesDatabase
 class UserType(Enum):
     HONEST = 0
     RANDOM_VOTES = 1
+    PROMOTE_SPAM_RULES = 2
 
 
 class User:
@@ -43,6 +44,7 @@ class User:
         """
         (re)compute the reputation of rules and tags.
         """
+        print("Computing reputations for %s" % self)
 
         # Compute correlations
         self.trust_db.compute_correlations(self.similarity_metric)
@@ -59,6 +61,7 @@ class User:
     def compute_rules_reputation(self):
         # Compute rule reputations
         for rule in self.rules_db.get_all_rules():
+            print("Computing reputation for rule %d" % rule.rule_id)
             votes_for_rule = self.votes_db.get_votes_for_rule(hash(rule))
             if not votes_for_rule:
                 rule.reputation_score = 0
@@ -80,11 +83,14 @@ class User:
             for user_id in rep_fractions.keys():
                 rep_fractions[user_id] /= num_votes_per_user[user_id]
 
+            print(rep_fractions)
+
             # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
             fsum = 0
             reputation_score = 0
             for user_id in rep_fractions.keys():
                 flow = self.trust_db.max_flows[user_id]
+                print("Flow from %s to %s: %f" % (self, user_id, flow))
                 reputation_score += flow * rep_fractions[user_id]
                 fsum += flow
 
