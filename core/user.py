@@ -44,6 +44,7 @@ class User:
         """
         (re)compute the reputation of rules and tags.
         """
+        print("Computing scores/weights for %s" % self)
 
         # Compute correlations
         self.trust_db.compute_correlations(self.similarity_metric)

@@ -77,7 +77,7 @@ class Experiment:
 
                     # Users sometimes vote wrong
                     if random.random() < self.settings.user_vote_error_rate:
-                        print("User %s misvotes!" % user)
+                        print("User %s misvotes on rules %s!" % (user, tag_to_vote_on.rules))
                         vote = not vote
 
                     user.vote(tag_to_vote_on, vote)
