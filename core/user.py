@@ -40,12 +40,23 @@ class User:
             self.content_db.apply_rule(rule)
 
     def recompute_reputations(self):
+        """
+        (re)compute the reputation of rules and tags.
+        """
+
         # Compute correlations
         self.trust_db.compute_correlations(self.similarity_metric)
 
         # Compute max flows between pairs
         self.trust_db.compute_flows()
 
+        # Compute the reputation of rules
+        self.compute_rules_reputation()
+
+        # Finally, we assign a weight to each tag, depending on the reputation score of the rules that generated it
+        self.compute_tag_weights()
+
+    def compute_rules_reputation(self):
         # Compute rule reputations
         for rule in self.rules_db.get_all_rules():
             votes_for_rule = self.votes_db.get_votes_for_rule(hash(rule))
@@ -61,7 +72,8 @@ class User:
                     num_votes_per_user[vote.user_id] = 0
 
                 bin_score = 1 if vote.is_accurate else -1
-                rep_fractions[vote.user_id] += self.trust_db.get_correlation_coefficient(self.identifier, vote.user_id) * bin_score
+                rep_fractions[vote.user_id] += self.trust_db.get_correlation_coefficient(self.identifier,
+                                                                                         vote.user_id) * bin_score
                 num_votes_per_user[vote.user_id] += 1
 
             # Normalize the personal scores
@@ -77,6 +89,21 @@ class User:
                 fsum += flow
 
             rule.reputation_score = reputation_score / fsum
+
+    def compute_tag_weights(self):
+        """
+        Compute the weight of the tags associated with content.
+        This weight is simply the average of the reputations of the rules that generated the tag.
+        """
+        for content in self.content_db.get_all_content():
+            for tag in content.tags:
+                count = 0
+                weight = 0
+                for rule_id in tag.rules:
+                    rule_rep = self.rules_db.get_rule(rule_id).reputation_score
+                    weight += rule_rep
+                    count += 1
+                tag.weight = weight / count
 
     def __str__(self):
         user_status = "honest" if self.type == UserType.HONEST else "adversarial"

@@ -4,3 +4,4 @@ class Tag:
         self.name = name
         self.cid = cid
         self.rules = []  # IDs of rules that have generated this tag
+        self.weight = 0

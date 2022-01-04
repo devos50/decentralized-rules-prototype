@@ -151,18 +151,15 @@ class Experiment:
                         "%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, rule.rule_id, rule.reputation_score))
 
     def write_tags(self):
-        tags = {}
-        for rule in self.rules:
-            for content_id in rule.applicable_content_ids_correct + rule.applicable_content_ids_incorrect:
-                if content_id not in tags:
-                    tags[content_id] = []
-                tags[content_id].append((rule.output_tag, rule.rule_id, content_id in rule.applicable_content_ids_correct))
-
+        """
+        For each user, write all the tags in the database with the appropriate scores.
+        """
         with open("data/tags.csv", "w") as tags_file:
-            tags_file.write("content_id,tag,rule_id,is_correct\n")
-            for content_id, tags in tags.items():
-                for tag, rule_id, is_correct in tags:
-                    tags_file.write("%s,%s,%s,%s\n" % (content_id, tag, rule_id, "yes" if is_correct else "no"))
+            tags_file.write("user_id,user_type,content_id,tag,weight\n")
+            for user in self.users:
+                for content in user.content_db.get_all_content():
+                    for tag in content.tags:
+                        tags_file.write("%s,%s,%s,%s,%f\n" % (user.identifier, user.type.value, hash(content), tag.name, tag.weight))
 
     def run(self):
         self.create_rules()
