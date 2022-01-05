@@ -16,4 +16,4 @@ class ExperimentSettings:
     user_vote_error_rate = 0.05
 
     # Whether honest users upvote a few accurate rules that they classified as bad at the end of the experiment.
-    do_correction_afterwards = True
+    do_correction_afterwards = False
