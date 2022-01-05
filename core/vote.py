@@ -19,6 +19,8 @@ class Vote:
         for vote_a in votes_a:
             for vote_b in votes_b:
                 if vote_a.tag == vote_b.tag and vote_a.cid == vote_b.cid and set(vote_a.rules_ids).intersection(set(vote_b.rules_ids)):
+                    # TODO there's a bug here: the check is too struct - CID + tag do not have to match. Instead, we have to consider all pairs of votes.
+                    # TODO alternatively, should we really work with a binary vector? Can we use a vector of integers with each entry the vote sum of the rule?
                     # Both votes endorse the same rule
                     if vote_a.is_accurate == vote_b.is_accurate:
                         in_agreement.add((vote_a, vote_b))

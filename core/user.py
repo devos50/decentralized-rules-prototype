@@ -1,5 +1,7 @@
 from enum import Enum
 
+from numpy import average
+
 from core.content_database import ContentDatabase
 from core.rules_database import RulesDatabase
 from core.trust_database import TrustDatabase, SimilarityMetric
@@ -61,6 +63,7 @@ class User:
     def compute_rules_reputation(self):
         # Compute rule reputations
         for rule in self.rules_db.get_all_rules():
+            votes = {}
             print("Computing reputation for rule %d" % rule.rule_id)
             votes_for_rule = self.votes_db.get_votes_for_rule(hash(rule))
             if not votes_for_rule:
@@ -68,20 +71,16 @@ class User:
                 continue
 
             rep_fractions = {}
-            num_votes_per_user = {}
             for vote in votes_for_rule:
-                if vote.user_id not in rep_fractions:
-                    rep_fractions[vote.user_id] = 0
-                    num_votes_per_user[vote.user_id] = 0
+                if rule.rule_id not in votes:
+                    votes[rule.rule_id] = {}
+                if vote.user_id not in votes[rule.rule_id]:
+                    votes[rule.rule_id][vote.user_id] = []
+                votes[rule.rule_id][vote.user_id].append(1 if vote.is_accurate else -1)
 
-                bin_score = 1 if vote.is_accurate else -1
-                rep_fractions[vote.user_id] += self.trust_db.get_correlation_coefficient(self.identifier,
-                                                                                         vote.user_id) * bin_score
-                num_votes_per_user[vote.user_id] += 1
-
-            # Normalize the personal scores
-            for user_id in rep_fractions.keys():
-                rep_fractions[user_id] /= num_votes_per_user[user_id]
+            for user_id, user_votes in votes[rule.rule_id].items():
+                #print("Opinion of user %s on rule %s: %f" % (user_id, rule.rule_id, average(user_votes)))
+                rep_fractions[user_id] = self.trust_db.get_correlation_coefficient(self.identifier, user_id) * average(user_votes)
 
             # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
             fsum = 0

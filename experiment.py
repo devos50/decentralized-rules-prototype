@@ -131,12 +131,9 @@ class Experiment:
             if user.type != UserType.HONEST:
                 continue  # We don't care about the outgoing trust edges of adversaries
 
-            for user_ids, correlation in user.trust_db.correlation_scores.items():
-                from_user_id, to_user_id = user_ids
-                if user.identifier != from_user_id:
-                    continue
+            for to_user_id, correlation in user.trust_db.correlation_scores[user.identifier].items():
                 if to_user_id == user.identifier:
-                    continue
+                    continue  # Do not add edges to yourself
                 if not G.has_node(to_user_id):
                     other_user = self.get_user_by_id(to_user_id)
                     G.add_node(to_user_id, type=user.type,
@@ -149,7 +146,7 @@ class Experiment:
 
                 line_thick = max(0.2, abs(correlation) * 1.5)
 
-                G.add_edge(from_user_id, to_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
+                G.add_edge(user.identifier, to_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
 
         nx.nx_pydot.write_dot(G, "data/correlations.dot")
 
@@ -157,10 +154,7 @@ class Experiment:
         with open("data/correlations.csv", "w") as correlations_file:
             correlations_file.write("user_id,user_type,other_user_id,correlation\n")
             for user in self.users:
-                for user_ids, correlation in user.trust_db.correlation_scores.items():
-                    from_user_id, to_user_id = user_ids
-                    if from_user_id != user.identifier:
-                        continue
+                for to_user_id, correlation in user.trust_db.correlation_scores[user.identifier].items():
                     correlations_file.write(
                         "%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, to_user_id, correlation))
 
