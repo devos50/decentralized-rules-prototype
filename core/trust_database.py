@@ -67,7 +67,7 @@ class TrustDatabase:
         for rule_id, votes in votes.items():
             votes_a, votes_b = votes
             if not votes_a or not votes_b:
-                continue  # Nothing to work with
+                continue  # No overlap to work with
 
             diffs.append(abs(average(votes_a) - average(votes_b)))
             # weights.append(min(len(votes_a), len(votes_b)))
@@ -88,6 +88,9 @@ class TrustDatabase:
         # votes_agree, votes_conflict = Vote.get_overlap(self.votes_db.get_votes_for_user(user_a),
         #                                                self.votes_db.get_votes_for_user(user_b))
         # print("Votes agree: %d, votes conflict: %d" % (len(votes_agree), len(votes_conflict)))
+
+        if not diffs:
+            return 0
 
         return 1 - average(diffs)
 

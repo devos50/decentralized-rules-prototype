@@ -43,8 +43,16 @@ class Experiment:
         for user_type, user_num in enumerate(self.settings.num_users):
             for user_ind in range(len(self.users) + 1, len(self.users) + user_num + 1):
                 user = User("%d" % user_ind, user_type=UserType(user_type))
-                for content_item in self.content:  # Adversarial users have all content.
-                    user.content_db.add_content(Content(content_item))
+
+                if user_type == UserType.HONEST.value:
+                    content_of_user = random.sample(self.content, int(len(self.content) * self.settings.content_availability))
+                    print("Content: %d" % len(content_of_user))
+                    for content_item in content_of_user:
+                        user.content_db.add_content(Content(content_item))
+                else:
+                    # Adversarial users have all content.
+                    for content_item in self.content:
+                        user.content_db.add_content(Content(content_item))
                 self.users.append(user)
 
         # Distribute rules over users
@@ -195,10 +203,33 @@ class Experiment:
                     neighbour_votes = neighbour.votes_db.get_random_votes(neighbour.identifier)
                     user.votes_db.add_votes(neighbour_votes)
 
-                # TODO only update the affected items and not the entire database
-
         for user in self.users:
             user.recompute_reputations()
+
+        if self.settings.do_correction_afterwards:
+            print("Doing corrections...")
+            for user in self.users:
+                if user.type != UserType.HONEST:
+                    continue
+
+                did_vote = False
+                for rule in user.rules_db.get_all_rules():
+                    if rule.reputation_score < -0.5 and rule.type == RuleType.ACCURATE:
+                        # Find a tag to vote for
+                        for content in user.content_db.get_all_content():
+                            for tag in content.tags:
+                                if rule.rule_id in tag.rules:
+                                    print("%s votes on rule %s" % (user, rule.rule_id))
+                                    user.vote(tag, True)
+                                    did_vote = True
+                                    break
+
+                            if did_vote:
+                                break
+
+                if did_vote:
+                    user.recompute_reputations()
+
         self.write_data()
 
     def write_data(self):

@@ -90,7 +90,8 @@ class User:
                 reputation_score += flow * rep_fractions[user_id]
                 fsum += flow
 
-            rule.reputation_score = reputation_score / fsum
+            rule.reputation_score = 0 if fsum == 0 else reputation_score / fsum
+
 
     def compute_tag_weights(self):
         """
