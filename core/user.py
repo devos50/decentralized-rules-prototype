@@ -79,8 +79,11 @@ class User:
                 votes[rule.rule_id][vote.user_id].append(1 if vote.is_accurate else -1)
 
             for user_id, user_votes in votes[rule.rule_id].items():
+                correlation = self.trust_db.get_correlation_coefficient(self.identifier, user_id)
+                if -0.5 < correlation < 0.5:
+                    continue
                 #print("Opinion of user %s on rule %s: %f" % (user_id, rule.rule_id, average(user_votes)))
-                rep_fractions[user_id] = self.trust_db.get_correlation_coefficient(self.identifier, user_id) * average(user_votes)
+                rep_fractions[user_id] = correlation * average(user_votes)
 
             # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
             fsum = 0
@@ -91,7 +94,6 @@ class User:
                 fsum += flow
 
             rule.reputation_score = 0 if fsum == 0 else reputation_score / fsum
-
 
     def compute_tag_weights(self):
         """
