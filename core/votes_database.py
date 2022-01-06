@@ -18,8 +18,16 @@ class VotesDatabase:
                 self.votes_for_rules[rule_id] = []
             self.votes_for_rules[rule_id].append(vote)
 
+    def has_vote(self, vote):
+        if vote.user_id not in self.votes:
+            return False
+        return vote in self.votes[vote.user_id]
+
     def add_votes(self, votes):
         for vote in votes:
+            if self.has_vote(vote):
+                return
+
             self.add_vote(vote)
 
     def get_random_votes(self, user_id, limit=10):
