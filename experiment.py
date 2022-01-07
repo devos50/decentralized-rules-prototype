@@ -18,11 +18,21 @@ class Experiment:
         self.content = []
         self.content_popularity = {}
         self.users = []
+        self.round = 0
+
+        # For post-experiment processing
+        self.rules_reputation_per_round = {}
 
     def get_user_by_id(self, user_id):
         for user in self.users:
             if user.identifier == user_id:
                 return user
+        return None
+
+    def get_rule_by_id(self, rule_id):
+        for rule in self.rules:
+            if rule.rule_id == rule_id:
+                return rule
         return None
 
     def create_rules(self):
@@ -196,11 +206,16 @@ class Experiment:
 
     def write_reputations(self):
         with open("data/reputations.csv", "w") as reputations_file:
-            reputations_file.write("user_id,user_type,rule_id,rule_type,reputation\n")
-            for user in self.users:
-                for rule in user.rules_db.get_all_rules():
-                    reputations_file.write(
-                        "%s,%d,%s,%d,%.3f\n" % (user.identifier, user.type.value, rule.rule_id, rule.type.value, rule.reputation_score))
+            reputations_file.write("round,user_id,rule_id,rule_type,reputation\n")
+            for round in self.rules_reputation_per_round:
+                for user_id in self.rules_reputation_per_round[round]:
+                    user = self.get_user_by_id(user_id)
+                    if user.type != UserType.HONEST:
+                        continue
+                    for rule_id in self.rules_reputation_per_round[round][user_id]:
+                        rule = self.get_rule_by_id(rule_id)
+                        reputations_file.write(
+                            "%d,%s,%s,%d,%.3f\n" % (round, user_id, rule.rule_id, rule.type.value, self.rules_reputation_per_round[round][user_id][rule_id]))
 
     def write_tags(self):
         """
@@ -220,6 +235,9 @@ class Experiment:
         self.create_votes()
         self.connect_users()
 
+        if self.settings.compute_reputations_per_round:
+            self.recompute_all_reputations()
+
         for round in range(1, self.settings.rounds + 1):
             print("Evaluating round %d" % round)
             # For each user, get the voting history of other users and compute the correlation between voting histories
@@ -238,11 +256,13 @@ class Experiment:
                 neighbour = random.choice(user.neighbours)
                 neighbour_votes = neighbour.votes_db.get_random_votes(neighbour.identifier)
                 user.votes_db.add_votes(neighbour_votes)
+            self.round = round
 
-        for user in self.users:
-            user.recompute_reputations()
-            for rule in user.rules_db.get_all_rules():
-                print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
+            if self.settings.compute_reputations_per_round:
+                self.recompute_all_reputations()
+
+        if not self.settings.compute_reputations_per_round:
+            self.recompute_all_reputations()
 
         if self.settings.do_correction_afterwards:
             print("Doing corrections...")
@@ -265,10 +285,17 @@ class Experiment:
                             if did_vote:
                                 break
 
-                if did_vote:
-                    user.recompute_reputations()
-
+            self.recompute_all_reputations()
         self.write_data()
+
+    def recompute_all_reputations(self):
+        self.rules_reputation_per_round[self.round] = {}
+        for user in self.users:
+            user.recompute_reputations()
+            self.rules_reputation_per_round[self.round][user.identifier] = {}
+            for rule in user.rules_db.get_all_rules():
+                print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
+                self.rules_reputation_per_round[self.round][user.identifier][rule.rule_id] = rule.reputation_score
 
     def write_data(self):
         self.write_correlation_graph()

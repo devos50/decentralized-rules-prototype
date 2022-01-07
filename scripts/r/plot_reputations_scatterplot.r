@@ -3,9 +3,7 @@ library(ggplot2)
 dat <- read.csv("../../data/reputations.csv")
 print(dat)
 
-dat_filtered <- dat[dat$user_type == 0,]
-
-p <- ggplot(dat_filtered, aes(x=as.factor(user_id), y=reputation)) +
+p <- ggplot(dat, aes(x=as.factor(user_id), y=reputation)) +
      geom_point(aes(shape=as.factor(rule_type), color=as.factor(rule_type))) +
      ylim(c(-1, 1)) +
      ylab("Rule reputation") +
