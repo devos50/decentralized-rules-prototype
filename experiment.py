@@ -61,6 +61,34 @@ class Experiment:
             user.rules_db.add_rules(user_rules)
             user.apply_rules_to_content()
 
+    def cast_honest_user_vote(self, user, tag_to_vote_on):
+        # Check if we already voted on this tag
+        already_cast = False
+        if tag_to_vote_on.cid in user.votes_db.votes_for_content:
+            for vote in user.votes_db.votes_for_content[tag_to_vote_on.cid]:
+                if tag_to_vote_on.name == vote.tag:
+                    already_cast = True
+                    break
+
+        if already_cast:
+            return
+
+        # Downvote if all rules incorrectly generated this tag
+        vote = False
+        for rule_id in tag_to_vote_on.rules:
+            rule = user.rules_db.get_rule(rule_id)
+            if hash(tag_to_vote_on.cid) in rule.applicable_content_ids_correct:
+                vote = True
+                break
+
+        # Users sometimes vote wrong
+        if random.random() < self.settings.user_vote_error_rate:
+            print("User %s misvotes on rules %s!" % (user, tag_to_vote_on.rules))
+            vote = not vote
+
+        print("%s votes %d on rule %s (cid: %s)" % (user, 1 if vote else -1, tag_to_vote_on.rules, tag_to_vote_on.cid))
+        user.vote(tag_to_vote_on, vote)
+
     def create_votes(self):
         # Create some votes
         for user in self.users:
@@ -68,28 +96,13 @@ class Experiment:
             num_votes = 0
 
             if user.type == UserType.HONEST:
-                tags = []
-                # Determine the set of tags we are going to vote on - depending on the user engagement
-                for content_item in user.content_db.get_all_content():
-                    for tag in content_item.tags:
-                        tags.append(tag)
-
-                for tag_to_vote_on in random.sample(tags, int(len(tags) * self.settings.user_engagement)):
-                    # Downvote if all rules incorrectly generated this tag
-                    vote = False
-                    for rule_id in tag_to_vote_on.rules:
-                        rule = user.rules_db.get_rule(rule_id)
-                        if hash(tag_to_vote_on.cid) in rule.applicable_content_ids_correct:
-                            vote = True
-                            break
-
-                    # Users sometimes vote wrong
-                    if random.random() < self.settings.user_vote_error_rate:
-                        print("User %s misvotes on rules %s!" % (user, tag_to_vote_on.rules))
-                        vote = not vote
-
-                    user.vote(tag_to_vote_on, vote)
-                    num_votes += 1
+                # We will take a subset of the content and cast votes
+                all_content = list(user.content_db.get_all_content())
+                content_to_vote_on = random.sample(all_content, int(len(all_content) * self.settings.initial_user_engagement))
+                for content in content_to_vote_on:
+                    for tag in content.tags:
+                        self.cast_honest_user_vote(user, tag)
+                        num_votes += 1
             elif user.type == UserType.RANDOM_VOTES:
                 # We simply vote randomly
                 for content_item in user.content_db.get_all_content():
@@ -196,10 +209,19 @@ class Experiment:
             print("Evaluating round %d" % round)
             # For each user, get the voting history of other users and compute the correlation between voting histories
             for user in self.users:
-                for neighbour in user.neighbours:
-                    # User queries neighbours
-                    neighbour_votes = neighbour.votes_db.get_random_votes(neighbour.identifier)
-                    user.votes_db.add_votes(neighbour_votes)
+                # Adversarial nodes do nothing for now
+                if user.type != UserType.HONEST:
+                    continue
+
+                # Take a random content item and cast votes on the tags
+                content_item = user.content_db.get_random_content_item()
+                for tag in content_item.tags:
+                    self.cast_honest_user_vote(user, tag)
+
+                # Exchange votes with one neighbour
+                neighbour = random.choice(user.neighbours)
+                neighbour_votes = neighbour.votes_db.get_random_votes(neighbour.identifier)
+                user.votes_db.add_votes(neighbour_votes)
 
         for user in self.users:
             user.recompute_reputations()
@@ -214,12 +236,12 @@ class Experiment:
 
                 did_vote = False
                 for rule in user.rules_db.get_all_rules():
-                    if rule.reputation_score < -0.5 and rule.type == RuleType.ACCURATE:
+                    if rule.reputation_score < 0 and rule.type == RuleType.ACCURATE:
                         # Find a tag to vote for
                         for content in user.content_db.get_all_content():
                             for tag in content.tags:
                                 if rule.rule_id in tag.rules:
-                                    print("%s votes on rule %s" % (user, rule.rule_id))
+                                    print("%s votes on rule %s (cid: %s)" % (user, rule.rule_id, tag.cid))
                                     user.vote(tag, True)
                                     did_vote = True
                                     break

@@ -7,6 +7,7 @@ class VotesDatabase:
         self.my_id = my_id
         self.votes = {}
         self.votes_for_rules = {}
+        self.votes_for_content = {}
 
     def add_vote(self, vote):
         if vote.user_id not in self.votes:
@@ -17,6 +18,10 @@ class VotesDatabase:
             if rule_id not in self.votes_for_rules:
                 self.votes_for_rules[rule_id] = []
             self.votes_for_rules[rule_id].append(vote)
+
+        if vote.cid not in self.votes_for_content:
+            self.votes_for_content[vote.cid] = []
+        self.votes_for_content[vote.cid].append(vote)
 
     def has_vote(self, vote):
         if vote.user_id not in self.votes:

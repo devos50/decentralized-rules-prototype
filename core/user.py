@@ -80,9 +80,9 @@ class User:
 
             for user_id, user_votes in votes[rule.rule_id].items():
                 correlation = self.trust_db.get_correlation_coefficient(self.identifier, user_id)
-                if -0.5 < correlation < 0.5:
+                if -0.2 < correlation < 0.2:
                     continue
-                #print("Opinion of user %s on rule %s: %f" % (user_id, rule.rule_id, average(user_votes)))
+                print("Opinion of user %s on rule %s: %f (votes: %d, weight: %f, correlation: %f)" % (user_id, rule.rule_id, average(user_votes), len(user_votes), self.trust_db.max_flows[user_id], correlation))
                 rep_fractions[user_id] = correlation * average(user_votes)
 
             # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
