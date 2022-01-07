@@ -5,7 +5,7 @@ import networkx as nx
 from core.content import Content
 from core.rule import Rule, RuleType
 from core.user import User, UserType
-from settings import RuleCoverageDistribution
+from settings import RuleCoverageDistribution, ContentPopularityDistribution
 
 random.seed(42)
 
@@ -16,6 +16,7 @@ class Experiment:
         self.settings = settings
         self.rules = []
         self.content = []
+        self.content_popularity = {}
         self.users = []
 
     def get_user_by_id(self, user_id):
@@ -41,7 +42,17 @@ class Experiment:
 
     def create_content(self):
         for content_ind in range(self.settings.num_content_items):
-            self.content.append("%d" % content_ind)
+            self.content.append(content_ind)
+
+        zipf_denom = 0
+        for content_ind in range(self.settings.num_content_items):
+            zipf_denom += 1 / ((content_ind + 1) ** self.settings.zipf_exponent)
+
+        for content_ind in range(self.settings.num_content_items):
+            if self.settings.content_popularity_distribution == ContentPopularityDistribution.FIXED:
+                self.content_popularity[content_ind] = 1 / self.settings.num_content_items
+            elif self.settings.content_popularity_distribution == ContentPopularityDistribution.ZIPF:
+                self.content_popularity[content_ind] = (1 / ((content_ind + 1) ** self.settings.zipf_exponent)) / zipf_denom
 
     def create_users(self):
         # Create users with different profiles
@@ -51,13 +62,12 @@ class Experiment:
 
                 if user_type == UserType.HONEST.value:
                     content_of_user = random.sample(self.content, int(len(self.content) * self.settings.content_availability))
-                    print("Content: %d" % len(content_of_user))
                     for content_item in content_of_user:
-                        user.content_db.add_content(Content(content_item))
+                        user.content_db.add_content(Content("%d" % content_item, self.content_popularity[content_item]))
                 else:
                     # Adversarial users have all content.
                     for content_item in self.content:
-                        user.content_db.add_content(Content(content_item))
+                        user.content_db.add_content(Content("%d" % content_item, self.content_popularity[content_item]))
                 self.users.append(user)
 
         # Distribute rules over users
@@ -219,7 +229,8 @@ class Experiment:
                     continue
 
                 # Take a random content item and cast votes on the tags
-                content_item = user.content_db.get_random_content_item()
+                content_item = user.content_db.get_random_content_item_by_popularity()
+                print("%s interacts with %s" % (user, content_item.name))
                 for tag in content_item.tags:
                     self.cast_honest_user_vote(user, tag)
 

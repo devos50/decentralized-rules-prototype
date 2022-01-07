@@ -3,8 +3,9 @@ from core.tag import Tag
 
 class Content:
 
-    def __init__(self, name):
+    def __init__(self, name, popularity):
         self.name = name
+        self.popularity = popularity
         self.tags = []
 
     def get_tag_with_name(self, tag_str):
