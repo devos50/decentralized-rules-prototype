@@ -35,8 +35,8 @@ class Rule:
             else:
                 self.applicable_content_ids_correct.append(content_id)
 
-        print("Rule %s applies to: %s (correct), %s (incorrect)" % (
-            hash(self), self.applicable_content_ids_correct, self.applicable_content_ids_incorrect))
+        print("Rule %s applies to: %d correct, %d incorrect" % (
+            hash(self), len(self.applicable_content_ids_correct), len(self.applicable_content_ids_incorrect)))
 
     def get_copy(self):
         r = Rule(self.rule_id, self.output_tag, self.coverage)

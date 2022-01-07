@@ -5,6 +5,7 @@ import networkx as nx
 from core.content import Content
 from core.rule import Rule, RuleType
 from core.user import User, UserType
+from settings import RuleCoverageDistribution
 
 random.seed(42)
 
@@ -25,7 +26,11 @@ class Experiment:
 
     def create_rules(self):
         for rule_ind in range(1, self.settings.num_honest_rules + 1):
-            rule = Rule(rule_ind, "Tag %d" % rule_ind, coverage=self.settings.rule_coverage, error_rate=self.settings.rule_error_rate)
+            coverage = self.settings.rule_coverage
+            if self.settings.rule_coverage_distribution == RuleCoverageDistribution.RANDOM_UNIFORM:
+                coverage = random.random()
+
+            rule = Rule(rule_ind, "Tag %d" % rule_ind, coverage=coverage, error_rate=self.settings.rule_error_rate)
             rule.determine_applicable_content(self.settings.num_content_items)
             self.rules.append(rule)
 
