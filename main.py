@@ -4,6 +4,7 @@ Testing out a bare-bones scoring mechanism around voting and decentralized conte
 from experiment import Experiment
 from settings import ExperimentSettings
 
-experiment_settings = ExperimentSettings()
-exp = Experiment(experiment_settings)
-exp.run()
+if __name__ == "__main__":
+    experiment_settings = ExperimentSettings()
+    exp = Experiment(experiment_settings)
+    exp.run()
