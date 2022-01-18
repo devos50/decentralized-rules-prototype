@@ -177,6 +177,10 @@ class Experiment:
             if user.type != UserType.HONEST:
                 continue  # We don't care about the outgoing trust edges of adversaries
 
+            if user.identifier not in user.trust_db.correlation_scores:
+                print("No information on %s to write correlation graph" % user)
+                continue
+
             for to_user_id, correlation in user.trust_db.correlation_scores[user.identifier].items():
                 if to_user_id == user.identifier:
                     continue  # Do not add edges to yourself
@@ -200,6 +204,10 @@ class Experiment:
         with open("data/correlations.csv", "w") as correlations_file:
             correlations_file.write("user_id,user_type,other_user_id,correlation\n")
             for user in self.users:
+                if user.identifier not in user.trust_db.correlation_scores:
+                    print("No information on %s to write correlation scores" % user)
+                    continue
+
                 for to_user_id, correlation in user.trust_db.correlation_scores[user.identifier].items():
                     correlations_file.write(
                         "%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, to_user_id, correlation))
