@@ -2,11 +2,11 @@ from enum import Enum
 
 from numpy import average
 
-from core.content_database import ContentDatabase
-from core.rules_database import RulesDatabase
-from core.trust_database import TrustDatabase, SimilarityMetric
+from core.db.content_database import ContentDatabase
+from core.db.rules_database import RulesDatabase
+from core.db.trust_database import TrustDatabase, SimilarityMetric
+from core.db.votes_database import VotesDatabase
 from core.vote import Vote
-from core.votes_database import VotesDatabase
 
 
 class UserType(Enum):
