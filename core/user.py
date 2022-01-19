@@ -4,6 +4,7 @@ from numpy import average
 
 from core.db.content_database import ContentDatabase
 from core.db.rules_database import RulesDatabase
+from core.db.tags_database import TagsDatabase
 from core.db.trust_database import TrustDatabase, SimilarityMetric
 from core.db.votes_database import VotesDatabase
 from core.vote import Vote
@@ -19,7 +20,8 @@ class User:
 
     def __init__(self, identifier, user_type=UserType.HONEST, similarity_metric=SimilarityMetric.JACCARD):
         self.identifier = identifier
-        self.content_db = ContentDatabase()
+        self.tags_db = TagsDatabase()
+        self.content_db = ContentDatabase(self.tags_db)
         self.rules_db = RulesDatabase()
         self.votes_db = VotesDatabase(self.identifier)
         self.trust_db = TrustDatabase(self.identifier, self.votes_db)

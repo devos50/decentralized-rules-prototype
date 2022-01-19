@@ -51,12 +51,15 @@ class Experiment:
             self.rules.append(rule)
 
     def create_content(self):
-        for content_ind in range(self.settings.num_content_items):
-            self.content.append(content_ind)
+        """
+        Prepare content and determine the popularity of content, according to some distribution.
+        """
+        self.content = [ind for ind in range(self.settings.num_content_items)]
 
         zipf_denom = 0
-        for content_ind in range(self.settings.num_content_items):
-            zipf_denom += 1 / ((content_ind + 1) ** self.settings.zipf_exponent)
+        if self.settings.content_popularity_distribution == ContentPopularityDistribution.ZIPF:
+            for content_ind in range(self.settings.num_content_items):
+                zipf_denom += 1 / ((content_ind + 1) ** self.settings.zipf_exponent)
 
         for content_ind in range(self.settings.num_content_items):
             if self.settings.content_popularity_distribution == ContentPopularityDistribution.FIXED:
@@ -242,7 +245,9 @@ class Experiment:
         self.create_users()
         self.create_votes()
         self.connect_users()
+        self.evaluate_rounds()
 
+    def evaluate_rounds(self):
         if self.settings.compute_reputations_per_round:
             self.recompute_all_reputations()
 

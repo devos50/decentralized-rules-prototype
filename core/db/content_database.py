@@ -3,8 +3,9 @@ from numpy.random import choice
 
 class ContentDatabase:
 
-    def __init__(self):
+    def __init__(self, tags_db):
         self.content = {}
+        self.tags_db = tags_db
 
     def add_content(self, content):
         self.content[hash(content)] = content
@@ -21,4 +22,4 @@ class ContentDatabase:
 
     def apply_rule(self, rule):
         for content_item in self.get_all_content():
-            content_item.apply_rule(rule)
+            content_item.apply_rule(rule, self.tags_db)
