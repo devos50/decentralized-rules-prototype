@@ -16,10 +16,10 @@ class ContentPopularityDistribution(Enum):
 
 @dataclass
 class ExperimentSettings:
-    rounds = 1
+    rounds = 20
 
     # Content parameters
-    num_content_items = 4
+    num_content_items = 2
     content_availability = 1  # The percentage of all content users have
     zipf_exponent = 1
     content_popularity_distribution = ContentPopularityDistribution.FIXED
@@ -33,10 +33,10 @@ class ExperimentSettings:
 
     # User parameters
     num_users = {
-        UserType.HONEST: 2,
-        UserType.RANDOM_VOTES: 0,
+        UserType.HONEST: 5,
+        UserType.RANDOM_VOTES: 2,
         UserType.PROMOTE_SPAM_RULES: 0,
-        UserType.TAG_SPAMMER: 1
+        UserType.TAG_SPAMMER: 2
     }
     initial_user_engagement = 1
     initial_tags_created_per_user = 4  # TODO should follow a power-law

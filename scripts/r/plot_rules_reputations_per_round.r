@@ -20,4 +20,4 @@ p <- ggplot(dat, aes(x=round, y=rep_mean, color=rule_id)) +
      theme_bw() +
      theme(legend.position="bottom")
 
-ggsave("plots/reputations_per_round.pdf", p, width=6, height=3)
+ggsave("plots/rules_reputations_per_round.pdf", p, width=6, height=3)

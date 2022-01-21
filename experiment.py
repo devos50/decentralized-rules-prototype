@@ -258,7 +258,7 @@ class Experiment:
 
     def write_correlations(self):
         with open("data/correlations.csv", "w") as correlations_file:
-            correlations_file.write("user_id,user_type,other_user_id,correlation\n")
+            correlations_file.write("user_type,user_id,other_user_id,correlation\n")
             for user in self.users:
                 if user.identifier not in user.trust_db.correlation_scores:
                     print("No information on %s to write correlation scores" % user)
@@ -266,7 +266,7 @@ class Experiment:
 
                 for to_user_id, correlation in user.trust_db.correlation_scores[user.identifier].items():
                     correlations_file.write(
-                        "%s,%d,%s,%.3f\n" % (user.identifier, user.type.value, to_user_id, correlation))
+                        "%d,%s,%s,%.3f\n" % (user.type.value, user.identifier, to_user_id, correlation))
 
     def write_reputations(self):
         # Write the reputation of tags
@@ -313,12 +313,15 @@ class Experiment:
         For each user, write all the tags in the database with the appropriate scores.
         """
         with open("data/tags.csv", "w") as tags_file:
-            tags_file.write("user_id,user_type,content_id,tag,is_accurate,weight\n")
+            tags_file.write("user_id,content_id,tag,is_accurate,weight\n")
             for user in self.users:
+                if user.type != UserType.HONEST:
+                    continue
+
                 for content in user.content_db.get_all_content():
                     for tag in content.tags:
                         is_inaccurate = hash(tag) in self.inaccurate_tags
-                        tags_file.write("%s,%s,%s,%s,%d,%f\n" % (user.identifier, user.type.value, hash(content), tag.name, 0 if is_inaccurate else 1, tag.weight))
+                        tags_file.write("%s,%s,%s,%d,%f\n" % (user.identifier, hash(content), tag.name, 0 if is_inaccurate else 1, tag.weight))
 
     def run(self):
         self.create_rules()

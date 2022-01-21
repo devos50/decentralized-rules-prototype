@@ -10,4 +10,4 @@ p <- ggplot(dat_filtered, aes(x=reputation)) +
      xlim(c(-1, 1.1)) +
      theme_bw()
 
-ggsave("plots/reputations_histogram.pdf", p, width=4, height=3)
+ggsave("plots/rules_reputations_histogram.pdf", p, width=4, height=3)

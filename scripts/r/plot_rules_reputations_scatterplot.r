@@ -13,4 +13,4 @@ p <- ggplot(dat, aes(x=as.factor(user_id), y=reputation)) +
      scale_shape_discrete(name="Rule type", labels=c("Accurate", "Spam")) +
      scale_color_manual(name="Rule type", labels=c("Accurate", "Spam"), values=c("green4", "red"))
 
-ggsave("plots/reputations_scatterplot.pdf", p, width=5, height=3)
+ggsave("plots/rules_reputations_scatterplot.pdf", p, width=5, height=3)

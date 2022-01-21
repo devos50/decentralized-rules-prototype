@@ -183,7 +183,7 @@ class User:
                     weight += author_rep
                     count += 1
 
-                tag.weight = weight / count
+                tag.weight = (tag.reputation_score + (weight / count)) / 2
 
     def __str__(self):
         user_status = "honest" if self.type == UserType.HONEST else "adversarial"
