@@ -16,6 +16,7 @@ class UserType(Enum):
     HONEST = 0
     RANDOM_VOTES = 1
     PROMOTE_SPAM_RULES = 2
+    TAG_SPAMMER = 3
 
 
 class User:

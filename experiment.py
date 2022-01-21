@@ -77,11 +77,11 @@ class Experiment:
 
     def create_users(self):
         # Create users with different profiles
-        for user_type, user_num in enumerate(self.settings.num_users):
+        for user_type, user_num in self.settings.num_users.items():
             for user_ind in range(len(self.users) + 1, len(self.users) + user_num + 1):
-                user = User("%d" % user_ind, user_type=UserType(user_type))
+                user = User("%d" % user_ind, user_type=user_type)
 
-                if user_type == UserType.HONEST.value:
+                if user_type == UserType.HONEST:
                     content_of_user = random.sample(self.content, int(len(self.content) * self.settings.content_availability))
                     for content_item in content_of_user:
                         user.content_db.add_content(Content("%d" % content_item, self.content_popularity[content_item]))
@@ -147,7 +147,6 @@ class Experiment:
         Have the specified user create some initial tags.
         """
         created_tags: List[Tag] = []
-        # TODO we only do this for honest users for now
         if user.type == UserType.HONEST:
             # TODO with a uniform distribution of content
             all_content = list(user.content_db.get_all_content())
@@ -155,8 +154,19 @@ class Experiment:
             num_items_to_tag = min(len(all_content), int(len(all_content) * self.settings.initial_tags_created_per_user))
             content_to_tag = random.sample(all_content, num_items_to_tag)
             for content in content_to_tag:
-                tag = user.tag(hash(content), "Tag %d" % random.randint(1, 100))  # TODO hard-coded
+                tag_id = hash(user) + hash(content)
+                tag = user.tag(hash(content), "Tag %d" % tag_id)
                 created_tags.append(tag)
+        elif user.type == UserType.TAG_SPAMMER:
+            # Spammers create inaccurate tags on all content they find
+            for content in user.content_db.get_all_content():
+                tag_id = hash(user) * 10000 + hash(content)
+                tag = user.tag(hash(content), "Tag %d" % tag_id)
+                created_tags.append(tag)
+
+                if hash(content) not in self.inaccurate_tags:
+                    self.inaccurate_tags[hash(content)] = []
+                self.inaccurate_tags[hash(content)].append(tag.name)
 
         return created_tags
 

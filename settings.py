@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from core.user import UserType
+
 
 class RuleCoverageDistribution(Enum):
     FIXED = 0
@@ -30,7 +32,12 @@ class ExperimentSettings:
     rule_error_rate = 0
 
     # User parameters
-    num_users = (2, 0, 0)  # Honest users, random voters, spam promotors
+    num_users = {
+        UserType.HONEST: 2,
+        UserType.RANDOM_VOTES: 0,
+        UserType.PROMOTE_SPAM_RULES: 0,
+        UserType.TAG_SPAMMER: 1
+    }
     initial_user_engagement = 1
     initial_tags_created_per_user = 4  # TODO should follow a power-law
     user_vote_error_rate = 0
