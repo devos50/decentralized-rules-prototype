@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List
+from typing import Dict, List, Set
 
 import networkx as nx
 
@@ -24,7 +24,7 @@ class Experiment:
 
         # We keep track of the tags that are inaccurate and should be classified as such by end users.
         # Only used for experimental evaluation. In a deployed system, this information is not available.
-        self.inaccurate_tags: Dict[int, List[str]] = {}
+        self.inaccurate_tags: Set[int] = set()
 
         # For post-experiment processing
         self.rules_reputation_per_round = {}
@@ -128,7 +128,7 @@ class Experiment:
 
         # Downvote if the tag is inaccurate
         vote = True
-        if tag_to_vote_on.cid in self.inaccurate_tags and tag_to_vote_on.name in self.inaccurate_tags[tag_to_vote_on.cid]:
+        if hash(tag_to_vote_on) in self.inaccurate_tags:
             vote = False
 
         # Users sometimes vote wrong - if so, we invert the vote
@@ -164,9 +164,7 @@ class Experiment:
                 tag = user.tag(hash(content), "Tag %d" % tag_id)
                 created_tags.append(tag)
 
-                if hash(content) not in self.inaccurate_tags:
-                    self.inaccurate_tags[hash(content)] = []
-                self.inaccurate_tags[hash(content)].append(tag.name)
+                self.inaccurate_tags.add(hash(tag))
 
         return created_tags
 
@@ -273,15 +271,16 @@ class Experiment:
     def write_reputations(self):
         # Write the reputation of tags
         with open("data/tag_reputations.csv", "w") as reputations_file:
-            reputations_file.write("round,user_id,tag_id,reputation\n")
+            reputations_file.write("round,user_id,tag_id,is_accurate,reputation\n")
             for round in self.tags_reputation_per_round:
                 for user_id in self.tags_reputation_per_round[round]:
                     user = self.get_user_by_id(user_id)
                     if user.type != UserType.HONEST:
                         continue
                     for tag_id in self.tags_reputation_per_round[round][user_id]:
+                        is_inaccurate = tag_id in self.inaccurate_tags
                         reputations_file.write(
-                            "%d,%s,%d,%.3f\n" % (round, user_id, tag_id, self.tags_reputation_per_round[round][user_id][tag_id]))
+                            "%d,%s,%d,%d,%.3f\n" % (round, user_id, tag_id, 0 if is_inaccurate else 1, self.tags_reputation_per_round[round][user_id][tag_id]))
 
         # Write the reputation of users
         with open("data/user_reputations.csv", "w") as reputations_file:
@@ -314,11 +313,12 @@ class Experiment:
         For each user, write all the tags in the database with the appropriate scores.
         """
         with open("data/tags.csv", "w") as tags_file:
-            tags_file.write("user_id,user_type,content_id,tag,weight\n")
+            tags_file.write("user_id,user_type,content_id,tag,is_accurate,weight\n")
             for user in self.users:
                 for content in user.content_db.get_all_content():
                     for tag in content.tags:
-                        tags_file.write("%s,%s,%s,%s,%f\n" % (user.identifier, user.type.value, hash(content), tag.name, tag.weight))
+                        is_inaccurate = hash(tag) in self.inaccurate_tags
+                        tags_file.write("%s,%s,%s,%s,%d,%f\n" % (user.identifier, user.type.value, hash(content), tag.name, 0 if is_inaccurate else 1, tag.weight))
 
     def run(self):
         self.create_rules()
