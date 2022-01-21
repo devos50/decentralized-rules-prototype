@@ -1,7 +1,7 @@
 library(ggplot2)
 library(dplyr)
 
-dat <- read.csv("../../data/reputations.csv")
+dat <- read.csv("../../data/rules_reputations.csv")
 dat$rule_id <- as.factor(dat$rule_id)
 
 # Average the results

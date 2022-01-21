@@ -1,6 +1,6 @@
 library(ggplot2)
 
-dat <- read.csv("../../data/reputations.csv")
+dat <- read.csv("../../data/rules_reputations.csv")
 print(dat)
 
 p <- ggplot(dat, aes(x=as.factor(user_id), y=reputation)) +

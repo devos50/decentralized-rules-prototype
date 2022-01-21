@@ -1,10 +1,14 @@
+from typing import List, Dict
+
 from numpy.random import choice
+
+from core.content import Content
 
 
 class ContentDatabase:
 
     def __init__(self, tags_db):
-        self.content = {}
+        self.content: Dict[int, Content] = {}
         self.tags_db = tags_db
 
     def add_content(self, content):
@@ -13,8 +17,8 @@ class ContentDatabase:
     def get_content(self, cid):
         return self.content[cid] if cid in self.content else None
 
-    def get_all_content(self):
-        return self.content.values()
+    def get_all_content(self) -> List[Content]:
+        return list(self.content.values())
 
     def get_random_content_item_by_popularity(self):
         popularities = [content.popularity for content in self.content.values()]

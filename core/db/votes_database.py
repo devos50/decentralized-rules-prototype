@@ -1,4 +1,7 @@
 import random
+from typing import List
+
+from core.vote import Vote
 
 
 class VotesDatabase:
@@ -8,6 +11,7 @@ class VotesDatabase:
         self.votes = {}
         self.votes_for_rules = {}
         self.votes_for_content = {}
+        self.votes_for_tag = {}
 
     def add_vote(self, vote):
         if vote.user_id not in self.votes:
@@ -22,6 +26,11 @@ class VotesDatabase:
         if vote.cid not in self.votes_for_content:
             self.votes_for_content[vote.cid] = []
         self.votes_for_content[vote.cid].append(vote)
+
+        tag_hash = hash((vote.cid, vote.tag))
+        if tag_hash not in self.votes_for_tag:
+            self.votes_for_tag[tag_hash] = []
+        self.votes_for_tag[tag_hash].append(vote)
 
     def has_vote(self, vote):
         if vote.user_id not in self.votes:
@@ -49,4 +58,9 @@ class VotesDatabase:
     def get_votes_for_rule(self, rule_id):
         if rule_id in self.votes_for_rules:
             return self.votes_for_rules[rule_id]
+        return []
+
+    def get_votes_for_tag(self, tag_id) -> List[Vote]:
+        if tag_id in self.votes_for_tag:
+            return self.votes_for_tag[tag_id]
         return []

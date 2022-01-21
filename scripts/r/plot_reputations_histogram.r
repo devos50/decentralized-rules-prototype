@@ -1,6 +1,6 @@
 library(ggplot2)
 
-dat <- read.csv("../../data/reputations.csv")
+dat <- read.csv("../../data/rules_reputations.csv")
 print(dat)
 
 dat_filtered <- dat[dat$user_type == 0,]
