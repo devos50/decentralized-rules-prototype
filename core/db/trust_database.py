@@ -8,6 +8,7 @@ class TrustDatabase:
         self.my_id = my_id
         self.correlation_scores = {}
         self.max_flows = {}
+        self.user_reputations = {}
         self.votes_db = votes_db
         self.tags_db = tags_db
 

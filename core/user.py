@@ -71,8 +71,11 @@ class User:
         # Compute max flows between pairs
         self.trust_db.compute_flows()
 
-        # Compute tags reputation
+        # Compute the reputations of tags
         self.compute_tags_reputation()
+
+        # Compute the reputations of other users (based on their tag history)
+        self.compute_user_reputation()
 
         # # Compute the reputation of rules
         # self.compute_rules_reputation()
@@ -88,6 +91,17 @@ class User:
         for content in self.content_db.get_all_content():
             for tag in content.tags:
                 self.compute_tag_reputation(tag)
+
+    def compute_user_reputation(self):
+        self.trust_db.user_reputations = {}
+        for user_id, tags in self.tags_db.tags_by_users.items():
+            if user_id == hash(self):
+                self.trust_db.user_reputations[user_id] = 1  # You fully trust yourself
+                continue
+
+            # TODO we only consider individual tags for now - we should also take rules into consideration
+            tag_reps = [tag.reputation_score for tag in self.tags_db.get_tags_created_by_user(user_id)]
+            self.trust_db.user_reputations[user_id] = average(tag_reps)
 
     def compute_tag_reputation(self, tag: Tag):
         """

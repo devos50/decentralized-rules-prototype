@@ -29,6 +29,7 @@ class Experiment:
         # For post-experiment processing
         self.rules_reputation_per_round = {}
         self.tags_reputation_per_round = {}
+        self.user_reputation_per_round = {}
 
     def get_user_by_id(self, user_id):
         for user in self.users:
@@ -272,6 +273,18 @@ class Experiment:
                         reputations_file.write(
                             "%d,%s,%d,%.3f\n" % (round, user_id, tag_id, self.tags_reputation_per_round[round][user_id][tag_id]))
 
+        # Write the reputation of users
+        with open("data/user_reputations.csv", "w") as reputations_file:
+            reputations_file.write("round,user_id,other_user_id,reputation\n")
+            for round in self.user_reputation_per_round:
+                for user_id in self.user_reputation_per_round[round]:
+                    user = self.get_user_by_id(user_id)
+                    if user.type != UserType.HONEST:
+                        continue
+                    for other_user_id in self.user_reputation_per_round[round][user_id]:
+                        reputations_file.write(
+                            "%d,%s,%s,%.3f\n" % (round, user_id, other_user_id, self.user_reputation_per_round[round][user_id][other_user_id]))
+
         # Write the reputation of rules
         with open("data/rules_reputations.csv", "w") as reputations_file:
             reputations_file.write("round,user_id,rule_id,rule_type,reputation\n")
@@ -362,14 +375,19 @@ class Experiment:
 
     def recompute_all_reputations(self):
         self.rules_reputation_per_round[self.round] = {}
+        self.user_reputation_per_round[self.round] = {}
         self.tags_reputation_per_round[self.round] = {}
         for user in self.users:
             user.recompute_reputations()
             self.rules_reputation_per_round[self.round][user.identifier] = {}
+            self.user_reputation_per_round[self.round][user.identifier] = {}
             self.tags_reputation_per_round[self.round][user.identifier] = {}
             for rule in user.rules_db.get_all_rules():
                 print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
                 self.rules_reputation_per_round[self.round][user.identifier][rule.rule_id] = rule.reputation_score
+            for other_user_id, user_rep in user.trust_db.user_reputations.items():
+                print("Reputation of user %s: %f" % (other_user_id, user_rep))
+                self.user_reputation_per_round[self.round][user.identifier][other_user_id] = user_rep
             for tag in user.tags_db.get_all_tags():
                 print("Reputation tag %s: %f" % (hash(tag), tag.reputation_score))
                 self.tags_reputation_per_round[self.round][user.identifier][hash(tag)] = tag.reputation_score
