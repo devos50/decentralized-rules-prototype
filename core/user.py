@@ -81,8 +81,9 @@ class User:
         # # Compute the reputation of rules
         # self.compute_rules_reputation()
         #
-        # # Finally, we assign a weight to each tag, depending on the reputation score of the rules that generated it
-        # self.compute_tag_weights()
+        # Finally, we assign a weight to each tag, depending on the reputation score of the rules and authors
+        # that generated/created it
+        self.compute_tag_weights()
 
     def compute_tags_reputation(self):
         """
@@ -176,6 +177,12 @@ class User:
                     rule_rep = self.rules_db.get_rule(rule_id).reputation_score
                     weight += rule_rep
                     count += 1
+
+                for author in tag.authors:
+                    author_rep = self.trust_db.user_reputations[author]
+                    weight += author_rep
+                    count += 1
+
                 tag.weight = weight / count
 
     def __str__(self):
