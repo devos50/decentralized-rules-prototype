@@ -133,7 +133,7 @@ class Experiment:
 
         # Users sometimes vote wrong - if so, we invert the vote
         if random.random() < self.settings.user_vote_error_rate:
-            print("User %s misvotes on rules %s!" % (user, tag_to_vote_on.rules))
+            print("User %s misvotes on tag %s (vote: %s)!" % (user, tag_to_vote_on.name, "-1" if vote else "+1"))
             vote = not vote
 
         vote_num = 1 if vote else -1
@@ -154,7 +154,7 @@ class Experiment:
             num_items_to_tag = min(len(all_content), int(len(all_content) * self.settings.initial_tags_created_per_user))
             content_to_tag = random.sample(all_content, num_items_to_tag)
             for content in content_to_tag:
-                tag_id = hash(user) + hash(content)
+                tag_id = tag_id = hash(user) * 10000 + hash(content)
                 tag = user.tag(hash(content), "Tag %d" % tag_id)
                 created_tags.append(tag)
         elif user.type == UserType.TAG_SPAMMER:
@@ -284,15 +284,16 @@ class Experiment:
 
         # Write the reputation of users
         with open("data/user_reputations.csv", "w") as reputations_file:
-            reputations_file.write("round,user_id,other_user_id,reputation\n")
+            reputations_file.write("round,user_type,other_user_type,user_id,other_user_id,reputation\n")
             for round in self.user_reputation_per_round:
                 for user_id in self.user_reputation_per_round[round]:
                     user = self.get_user_by_id(user_id)
                     if user.type != UserType.HONEST:
                         continue
                     for other_user_id in self.user_reputation_per_round[round][user_id]:
+                        other_user = self.get_user_by_id("%d" % other_user_id)
                         reputations_file.write(
-                            "%d,%s,%s,%.3f\n" % (round, user_id, other_user_id, self.user_reputation_per_round[round][user_id][other_user_id]))
+                            "%d,%d,%d,%s,%s,%.3f\n" % (round, user.type.value, other_user.type.value, user_id, other_user_id, self.user_reputation_per_round[round][user_id][other_user_id]))
 
         # Write the reputation of rules
         with open("data/rules_reputations.csv", "w") as reputations_file:
@@ -310,10 +311,18 @@ class Experiment:
 
     def write_tags(self):
         """
-        For each user, write all the tags in the database with the appropriate scores.
+        For each user, write all the tags in the database with the appropriate weights.
         """
         with open("data/tags.csv", "w") as tags_file:
-            tags_file.write("user_id,content_id,tag,is_accurate,weight\n")
+            tags_file.write("user_id,content_id,tag,is_accurate\n")
+            for user in self.users:
+                created_tags = user.tags_db.get_tags_created_by_user(hash(user))
+                for tag in created_tags:
+                    is_inaccurate = hash(tag) in self.inaccurate_tags
+                    tags_file.write("%s,%s,%s,%d\n" % (user.identifier, tag.cid, tag.name, 0 if is_inaccurate else 1))
+
+        with open("data/tag_weights.csv", "w") as tags_file:
+            tags_file.write("user_id,content_id,tag,is_accurate,reputation,weight\n")
             for user in self.users:
                 if user.type != UserType.HONEST:
                     continue
@@ -321,7 +330,17 @@ class Experiment:
                 for content in user.content_db.get_all_content():
                     for tag in content.tags:
                         is_inaccurate = hash(tag) in self.inaccurate_tags
-                        tags_file.write("%s,%s,%s,%d,%f\n" % (user.identifier, hash(content), tag.name, 0 if is_inaccurate else 1, tag.weight))
+                        tags_file.write("%s,%s,%s,%d,%f,%f\n" % (user.identifier, hash(content), tag.name, 0 if is_inaccurate else 1, tag.reputation_score, tag.weight))
+
+    def write_votes(self):
+        """
+        For every user, write their votes.
+        """
+        with open("data/votes.csv", "w") as votes_file:
+            votes_file.write("user_id,content_id,tag,vote\n")
+            for user in self.users:
+                for vote in user.votes_db.get_votes_for_user(user.identifier):
+                    votes_file.write("%s,%s,%s,%d\n" % (user.identifier, vote.cid, vote.tag, 1 if vote.is_accurate else -1))
 
     def run(self):
         self.create_rules()
@@ -410,3 +429,4 @@ class Experiment:
         self.write_correlations()
         self.write_reputations()
         self.write_tags()
+        self.write_votes()

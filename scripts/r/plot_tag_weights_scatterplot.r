@@ -1,6 +1,6 @@
 library(ggplot2)
 
-dat <- read.csv("../../data/tags.csv")
+dat <- read.csv("../../data/tag_weights.csv")
 print(dat)
 
 p <- ggplot(dat, aes(x=as.factor(user_id), y=weight)) +
