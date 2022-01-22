@@ -85,8 +85,8 @@ class User:
         """
         print("Computing scores/weights for %s" % self)
 
-        # Compute correlations
-        self.trust_db.compute_correlations()
+        # Compute similarities
+        self.trust_db.compute_similarities()
 
         # Compute max flows between pairs
         self.trust_db.compute_flows()
@@ -135,11 +135,11 @@ class User:
         rep_fractions = {}
         votes_for_tag = self.votes_db.get_votes_for_tag(hash(tag))
         for vote in votes_for_tag:
-            correlation = self.trust_db.get_correlation_coefficient(hash(self), vote.user_id)
-            if -0.2 < correlation < 0.2:
+            similarity = self.trust_db.get_similarity_coefficient(hash(self), vote.user_id)
+            if -0.2 < similarity < 0.2:
                 continue
 
-            rep_fractions[vote.user_id] = correlation * (1 if vote.is_accurate else -1)
+            rep_fractions[vote.user_id] = similarity * (1 if vote.is_accurate else -1)
 
         # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
         fsum = 0
@@ -176,11 +176,11 @@ class User:
 
             rep_fractions = {}
             for user_id, user_votes in votes[rule.rule_id].items():
-                correlation = self.trust_db.get_correlation_coefficient(hash(self), user_id)
-                if -0.2 < correlation < 0.2:
+                similarity = self.trust_db.get_similarity_coefficient(hash(self), user_id)
+                if -0.2 < similarity < 0.2:
                     continue
-                print("Opinion of user %s on rule %s: %f (votes: %d, weight: %f, correlation: %f)" % (user_id, rule.rule_id, average(user_votes), len(user_votes), self.trust_db.max_flows[user_id], correlation))
-                rep_fractions[user_id] = correlation * average(user_votes)
+                print("Opinion of user %s on rule %s: %f (votes: %d, weight: %f, similarity: %f)" % (user_id, rule.rule_id, average(user_votes), len(user_votes), self.trust_db.max_flows[user_id], similarity))
+                rep_fractions[user_id] = similarity * average(user_votes)
 
             # Compute the weighted average of these personal scores (the weight is the fraction in the max flow computation)
             fsum = 0

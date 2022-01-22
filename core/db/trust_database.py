@@ -6,36 +6,36 @@ class TrustDatabase:
 
     def __init__(self, my_id, votes_db, tags_db):
         self.my_id = my_id
-        self.correlation_scores = {}
+        self.similarity_scores = {}
         self.max_flows = {}
         self.user_reputations = {}
         self.votes_db = votes_db
         self.tags_db = tags_db
 
-    def compute_correlations(self):
+    def compute_similarities(self):
         """
-        Compute the correlation scores to all neighbours, based on the acquired local knowledge.
+        Compute the similarity scores to all neighbours, based on the acquired local knowledge.
         """
-        self.correlation_scores = {}
+        self.similarity_scores = {}
         for uid1 in self.votes_db.votes.keys():
             for uid2 in self.votes_db.votes.keys():
                 if uid1 == uid2 and uid1 != self.my_id:
                     continue
-                correlation = self.compute_correlation_coefficient(uid1, uid2)
+                similarity = self.compute_similarity_coefficient(uid1, uid2)
 
-                if uid1 not in self.correlation_scores:
-                    self.correlation_scores[uid1] = {}
-                if uid2 not in self.correlation_scores:
-                    self.correlation_scores[uid1][uid2] = []
+                if uid1 not in self.similarity_scores:
+                    self.similarity_scores[uid1] = {}
+                if uid2 not in self.similarity_scores:
+                    self.similarity_scores[uid1][uid2] = []
 
-                self.correlation_scores[uid1][uid2] = correlation
+                self.similarity_scores[uid1][uid2] = similarity
 
-    def get_correlation_coefficient(self, uid1, uid2):
-        return self.correlation_scores[uid1][uid2] if uid1 in self.correlation_scores and uid2 in self.correlation_scores[uid1] else 0
+    def get_similarity_coefficient(self, uid1, uid2):
+        return self.similarity_scores[uid1][uid2] if uid1 in self.similarity_scores and uid2 in self.similarity_scores[uid1] else 0
 
-    def compute_correlation_coefficient(self, user_a, user_b):
+    def compute_similarity_coefficient(self, user_a, user_b):
         """
-        Compute the correlation coefficient from the perspective of this user.
+        Compute the similarity coefficient from the perspective of this user.
 
         This works as follows:
         We compare all votes of both A and B.
@@ -43,7 +43,7 @@ class TrustDatabase:
         We then take the average of all absolute differences, and take the average of these differences.
         We then subtract this final value from 1, which gives a value in the interval [-1, 1].
         """
-        print("Computing correlation between %s and %s" % (user_a, user_b))
+        print("Computing similarity between %s and %s" % (user_a, user_b))
         votes_on_rules = {}  # Rule => ([...], [...])
         votes_on_tags = {}
 
@@ -100,8 +100,8 @@ class TrustDatabase:
         # Construct the flow graph
         other_user_ids = set()
         flow_graph = nx.Graph()
-        for from_user_id in self.correlation_scores.keys():
-            for to_user_id, score in self.correlation_scores[from_user_id].items():
+        for from_user_id in self.similarity_scores.keys():
+            for to_user_id, score in self.similarity_scores[from_user_id].items():
                 if from_user_id == self.my_id and to_user_id == self.my_id:
                     continue
 

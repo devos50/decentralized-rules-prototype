@@ -246,8 +246,7 @@ class Experiment:
                     continue
                 user_a.connect(user_b)
 
-    def write_correlation_graph(self):
-        # Create correlation graph
+    def write_similarity_graph(self):
         G = nx.DiGraph()
         for user in self.users:
             if not G.has_node(hash(user)):
@@ -256,11 +255,11 @@ class Experiment:
             if user.type != UserType.HONEST:
                 continue  # We don't care about the outgoing trust edges of adversaries
 
-            if hash(user) not in user.trust_db.correlation_scores:
-                print("No information on %s to write correlation graph" % user)
+            if hash(user) not in user.trust_db.similarity_scores:
+                print("No information on %s to write similarity graph" % user)
                 continue
 
-            for to_user_id, correlation in user.trust_db.correlation_scores[hash(user)].items():
+            for to_user_id, similarity in user.trust_db.similarity_scores[hash(user)].items():
                 if to_user_id == hash(user):
                     continue  # Do not add edges to yourself
                 if not G.has_node(to_user_id):
@@ -268,28 +267,28 @@ class Experiment:
                     G.add_node(to_user_id, type=user.type,
                                color="red" if other_user.type != UserType.HONEST else "black")
                 edge_color = "black"
-                if correlation < -0.5:
+                if similarity < -0.5:
                     edge_color = "red"
-                elif correlation > 0.5:
+                elif similarity > 0.5:
                     edge_color = "darkgreen"
 
-                line_thick = max(0.2, abs(correlation) * 1.5)
+                line_thick = max(0.2, abs(similarity) * 1.5)
 
-                G.add_edge(hash(user), to_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
+                G.add_edge(hash(user), to_user_id, weight=similarity, color=edge_color, penwidth=line_thick)
 
-        nx.nx_pydot.write_dot(G, "data/correlations.dot")
+        nx.nx_pydot.write_dot(G, "data/similarities.dot")
 
-    def write_correlations(self):
-        with open("data/correlations.csv", "w") as correlations_file:
-            correlations_file.write("user_type,user_id,other_user_id,correlation\n")
+    def write_similarities(self):
+        with open("data/similarities.csv", "w") as similarities_file:
+            similarities_file.write("user_type,user_id,other_user_id,similarity\n")
             for user in self.users:
-                if hash(user) not in user.trust_db.correlation_scores:
-                    print("No information on %s to write correlation scores" % user)
+                if hash(user) not in user.trust_db.similarity_scores:
+                    print("No information on %s to write similarity scores" % user)
                     continue
 
-                for to_user_id, correlation in user.trust_db.correlation_scores[hash(user)].items():
-                    correlations_file.write(
-                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, correlation))
+                for to_user_id, similarity in user.trust_db.similarity_scores[hash(user)].items():
+                    similarities_file.write(
+                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity))
 
     def write_reputations(self):
         # Write the reputation of tags
@@ -378,7 +377,7 @@ class Experiment:
 
         for round in range(1, self.settings.rounds + 1):
             print("Evaluating round %d" % round)
-            # For each user, get the voting history of other users and compute the correlation between voting histories
+            # For each user, get the voting history of other users and compute the similarity between voting histories
             for user in self.users:
                 # Adversarial nodes do nothing for now
                 if user.type != UserType.HONEST:
@@ -449,8 +448,8 @@ class Experiment:
                 self.tags_reputation_per_round[self.round][hash(user)][hash(tag)] = tag.reputation_score
 
     def write_data(self):
-        self.write_correlation_graph()
-        self.write_correlations()
+        self.write_similarity_graph()
+        self.write_similarities()
         self.write_reputations()
         self.write_tags()
         self.write_votes()
