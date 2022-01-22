@@ -20,6 +20,7 @@ class Experiment:
         self.content = []
         self.content_popularity = {}
         self.users: List[User] = []
+        self.users_by_type: Dict[UserType: List[User]] = {}
         self.round = 0
 
         # We keep track of the tags that are inaccurate and should be classified as such by end users.
@@ -31,9 +32,9 @@ class Experiment:
         self.tags_reputation_per_round = {}
         self.user_reputation_per_round = {}
 
-    def get_user_by_id(self, user_id):
+    def get_user_by_id(self, user_id: int):
         for user in self.users:
-            if user.identifier == user_id:
+            if hash(user) == user_id:
                 return user
         return None
 
@@ -44,19 +45,31 @@ class Experiment:
         return None
 
     def create_rules(self):
+        # Create honest rules
         for rule_ind in range(1, self.settings.num_honest_rules + 1):
+            # Randomly pick a honest user that has created the rule
+            rule_author = random.choice(self.users_by_type[UserType.HONEST])
+
             coverage = self.settings.rule_coverage
             if self.settings.rule_coverage_distribution == RuleCoverageDistribution.RANDOM_UNIFORM:
                 coverage = random.random()
 
-            rule = Rule(rule_ind, "Tag %d" % rule_ind, coverage=coverage, error_rate=self.settings.rule_error_rate)
+            rule = Rule(hash(rule_author), rule_ind, "Tag %d" % rule_ind, coverage=coverage, error_rate=self.settings.rule_error_rate)
+            print("%s creates rule %s with coverage %f" % (rule_author, rule.rule_id, rule.coverage))
             rule.determine_applicable_content(self.settings.num_content_items)
             self.rules.append(rule)
 
-        for rule_ind in range(1, self.settings.num_spam_rules + 1):
-            rule = Rule(len(self.rules) + 1, "Spam %d" % rule_ind, coverage=1, error_rate=1, rule_type=RuleType.SPAM)
-            rule.determine_applicable_content(self.settings.num_content_items)
-            self.rules.append(rule)
+            # Update the inaccurate tags
+            for invalid_content_id in rule.applicable_content_ids_incorrect:
+                tag_hash = hash((invalid_content_id, rule.output_tag))
+                self.inaccurate_tags.add(tag_hash)
+
+        # TODO fix this
+        # Have each spam rule promotor create a spam rule
+        # for rule_ind, adversary in enumerate(self.users_by_type[UserType.PROMOTE_SPAM_RULES]):
+        #     rule = Rule(hash(adversary), len(self.rules) + 1, "Spam %d" % (rule_ind + 1), coverage=1, error_rate=1, rule_type=RuleType.SPAM)
+        #     rule.determine_applicable_content(self.settings.num_content_items)
+        #     self.rules.append(rule)
 
     def create_content(self):
         """
@@ -89,7 +102,14 @@ class Experiment:
                     # Adversarial users have all content.
                     for content_item in self.content:
                         user.content_db.add_content(Content("%d" % content_item, self.content_popularity[content_item]))
+
                 self.users.append(user)
+                if user.type not in self.users_by_type:
+                    self.users_by_type[user.type] = []
+                self.users_by_type[user.type].append(user)
+
+        # Create rules
+        self.create_rules()
 
         # Share and apply rules
         for user in self.users:
@@ -119,7 +139,7 @@ class Experiment:
         already_cast = False
         if tag_to_vote_on.cid in user.votes_db.votes_for_content:
             for vote in user.votes_db.votes_for_content[tag_to_vote_on.cid]:
-                if tag_to_vote_on.name == vote.tag:
+                if tag_to_vote_on.name == vote.tag and vote.user_id == hash(user):
                     already_cast = True
                     break
 
@@ -176,12 +196,15 @@ class Experiment:
         num_votes = 0
 
         if user.type == UserType.HONEST:
+            rules_created = user.rules_db.get_rule_ids_created_by_user(hash(user))
+
             # We will take a subset of the content and cast votes
             all_content = list(user.content_db.get_all_content())
             content_to_vote_on = random.sample(all_content, int(len(all_content) * self.settings.initial_user_engagement))
             for content in content_to_vote_on:
                 for tag in content.tags:
-                    if hash(user) not in tag.authors:
+                    if hash(user) not in tag.authors and not set(rules_created).intersection(tag.rules):
+                        # Only upvote the tags/rules created by other users.
                         self.cast_honest_user_vote(user, tag)
                         num_votes += 1
         elif user.type == UserType.RANDOM_VOTES:
@@ -227,18 +250,18 @@ class Experiment:
         # Create correlation graph
         G = nx.DiGraph()
         for user in self.users:
-            if not G.has_node(user.identifier):
-                G.add_node(user.identifier, type=user.type, color="red" if user.type != UserType.HONEST else "black")
+            if not G.has_node(hash(user)):
+                G.add_node(hash(user), type=user.type, color="red" if user.type != UserType.HONEST else "black")
 
             if user.type != UserType.HONEST:
                 continue  # We don't care about the outgoing trust edges of adversaries
 
-            if user.identifier not in user.trust_db.correlation_scores:
+            if hash(user) not in user.trust_db.correlation_scores:
                 print("No information on %s to write correlation graph" % user)
                 continue
 
-            for to_user_id, correlation in user.trust_db.correlation_scores[user.identifier].items():
-                if to_user_id == user.identifier:
+            for to_user_id, correlation in user.trust_db.correlation_scores[hash(user)].items():
+                if to_user_id == hash(user):
                     continue  # Do not add edges to yourself
                 if not G.has_node(to_user_id):
                     other_user = self.get_user_by_id(to_user_id)
@@ -252,7 +275,7 @@ class Experiment:
 
                 line_thick = max(0.2, abs(correlation) * 1.5)
 
-                G.add_edge(user.identifier, to_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
+                G.add_edge(hash(user), to_user_id, weight=correlation, color=edge_color, penwidth=line_thick)
 
         nx.nx_pydot.write_dot(G, "data/correlations.dot")
 
@@ -260,13 +283,13 @@ class Experiment:
         with open("data/correlations.csv", "w") as correlations_file:
             correlations_file.write("user_type,user_id,other_user_id,correlation\n")
             for user in self.users:
-                if user.identifier not in user.trust_db.correlation_scores:
+                if hash(user) not in user.trust_db.correlation_scores:
                     print("No information on %s to write correlation scores" % user)
                     continue
 
-                for to_user_id, correlation in user.trust_db.correlation_scores[user.identifier].items():
+                for to_user_id, correlation in user.trust_db.correlation_scores[hash(user)].items():
                     correlations_file.write(
-                        "%d,%s,%s,%.3f\n" % (user.type.value, user.identifier, to_user_id, correlation))
+                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, correlation))
 
     def write_reputations(self):
         # Write the reputation of tags
@@ -319,7 +342,7 @@ class Experiment:
                 created_tags = user.tags_db.get_tags_created_by_user(hash(user))
                 for tag in created_tags:
                     is_inaccurate = hash(tag) in self.inaccurate_tags
-                    tags_file.write("%s,%s,%s,%d\n" % (user.identifier, tag.cid, tag.name, 0 if is_inaccurate else 1))
+                    tags_file.write("%d,%s,%s,%d\n" % (hash(user), tag.cid, tag.name, 0 if is_inaccurate else 1))
 
         with open("data/tag_weights.csv", "w") as tags_file:
             tags_file.write("user_id,content_id,tag,is_accurate,reputation,weight\n")
@@ -330,7 +353,7 @@ class Experiment:
                 for content in user.content_db.get_all_content():
                     for tag in content.tags:
                         is_inaccurate = hash(tag) in self.inaccurate_tags
-                        tags_file.write("%s,%s,%s,%d,%f,%f\n" % (user.identifier, hash(content), tag.name, 0 if is_inaccurate else 1, tag.reputation_score, tag.weight))
+                        tags_file.write("%d,%s,%s,%d,%f,%f\n" % (hash(user), hash(content), tag.name, 0 if is_inaccurate else 1, tag.reputation_score, tag.weight))
 
     def write_votes(self):
         """
@@ -339,11 +362,11 @@ class Experiment:
         with open("data/votes.csv", "w") as votes_file:
             votes_file.write("user_id,content_id,tag,vote\n")
             for user in self.users:
-                for vote in user.votes_db.get_votes_for_user(user.identifier):
-                    votes_file.write("%s,%s,%s,%d\n" % (user.identifier, vote.cid, vote.tag, 1 if vote.is_accurate else -1))
+                print(user.votes_db.votes)
+                for vote in user.votes_db.get_votes_for_user(hash(user)):
+                    votes_file.write("%d,%s,%s,%d\n" % (hash(user), vote.cid, vote.tag, 1 if vote.is_accurate else -1))
 
     def run(self):
-        self.create_rules()
         self.create_content()
         self.create_users()
 
@@ -362,16 +385,18 @@ class Experiment:
                 if user.type != UserType.HONEST:
                     continue
 
+                rules_created = user.rules_db.get_rule_ids_created_by_user(hash(user))
+
                 # Take a random content item and cast votes on the tags
                 content_item = user.content_db.get_random_content_item_by_popularity()
                 print("%s interacts with content %s" % (user, content_item.name))
                 for tag in content_item.tags:
-                    if hash(user) not in tag.authors:
+                    if hash(user) not in tag.authors and not set(rules_created).intersection(tag.rules):
                         self.cast_honest_user_vote(user, tag)
 
                 # Exchange votes with one neighbour
                 neighbour = random.choice(user.neighbours)
-                neighbour_votes = neighbour.votes_db.get_random_votes(neighbour.identifier)
+                neighbour_votes = neighbour.votes_db.get_random_votes(hash(neighbour))
                 user.votes_db.add_votes(neighbour_votes)
             self.round = round
 
@@ -411,18 +436,18 @@ class Experiment:
         self.tags_reputation_per_round[self.round] = {}
         for user in self.users:
             user.recompute_reputations()
-            self.rules_reputation_per_round[self.round][user.identifier] = {}
-            self.user_reputation_per_round[self.round][user.identifier] = {}
-            self.tags_reputation_per_round[self.round][user.identifier] = {}
+            self.rules_reputation_per_round[self.round][hash(user)] = {}
+            self.user_reputation_per_round[self.round][hash(user)] = {}
+            self.tags_reputation_per_round[self.round][hash(user)] = {}
             for rule in user.rules_db.get_all_rules():
                 print("Reputation rule %s: %f" % (hash(rule), rule.reputation_score))
-                self.rules_reputation_per_round[self.round][user.identifier][rule.rule_id] = rule.reputation_score
+                self.rules_reputation_per_round[self.round][hash(user)][rule.rule_id] = rule.reputation_score
             for other_user_id, user_rep in user.trust_db.user_reputations.items():
                 print("Reputation of user %s: %f" % (other_user_id, user_rep))
-                self.user_reputation_per_round[self.round][user.identifier][other_user_id] = user_rep
+                self.user_reputation_per_round[self.round][hash(user)][other_user_id] = user_rep
             for tag in user.tags_db.get_all_tags():
                 print("Reputation tag %s: %f" % (hash(tag), tag.reputation_score))
-                self.tags_reputation_per_round[self.round][user.identifier][hash(tag)] = tag.reputation_score
+                self.tags_reputation_per_round[self.round][hash(user)][hash(tag)] = tag.reputation_score
 
     def write_data(self):
         self.write_correlation_graph()

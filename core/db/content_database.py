@@ -3,6 +3,7 @@ from typing import List, Dict
 from numpy.random import choice
 
 from core.content import Content
+from core.tag import Tag
 
 
 class ContentDatabase:
@@ -24,6 +25,10 @@ class ContentDatabase:
         popularities = [content.popularity for content in self.content.values()]
         return choice(list(self.content.values()), p=popularities)
 
-    def apply_rule(self, rule):
+    def apply_rule(self, rule) -> List[Tag]:
+        new_tags = []
         for content_item in self.get_all_content():
-            content_item.apply_rule(rule, self.tags_db)
+            new_tag = content_item.apply_rule(rule, self.tags_db)
+            if new_tag:
+                new_tags.append(new_tag)
+        return new_tags

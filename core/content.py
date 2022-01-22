@@ -1,5 +1,6 @@
 from typing import Optional
 
+from core.db.tags_database import TagsDatabase
 from core.rule import Rule
 from core.tag import Tag
 
@@ -38,12 +39,19 @@ class Content:
 
         return tag
 
-    def apply_rule(self, rule, tags_database):
+    def apply_rule(self, rule: Rule, tags_database: TagsDatabase) -> Optional[Tag]:
+        """
+        Apply a rule to this content.
+        :param rule: The rule to apply.
+        :param tags_database: The database with tags, so we can add the new tag.
+        :return: The new tag, if the rule has created one.
+        """
         if hash(self) not in rule.applicable_content_ids_correct and hash(self) not in rule.applicable_content_ids_incorrect:
-            return
+            return None
 
         tag = self.add_tag(rule.output_tag, rule=rule)
         tags_database.add_tag(tag)
+        return tag
 
     def __hash__(self):
         # TODO this should be replaced by proper hashes

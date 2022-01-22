@@ -43,7 +43,7 @@ class TrustDatabase:
         We then take the average of all absolute differences, and take the average of these differences.
         We then subtract this final value from 1, which gives a value in the interval [-1, 1].
         """
-        #print("Computing correlation between %s and %s" % (user_a, user_b))
+        print("Computing correlation between %s and %s" % (user_a, user_b))
         votes_on_rules = {}  # Rule => ([...], [...])
         votes_on_tags = {}
 
@@ -58,13 +58,6 @@ class TrustDatabase:
                 votes_on_tags[tag_hash] = ([], [])
             votes_on_tags[tag_hash][0].append(1 if vote.is_accurate else -1)
 
-        # Tags created by user A should implicitly be upvoted
-        for tag_by_a in self.tags_db.get_tags_created_by_user(int(user_a)):
-            tag_hash = hash(tag_by_a)
-            if tag_hash not in votes_on_tags:
-                votes_on_tags[tag_hash] = ([], [])
-            votes_on_tags[tag_hash][0].append(1)
-
         for vote in self.votes_db.get_votes_for_user(user_b):
             for rule_id in vote.rules_ids:
                 if rule_id not in votes_on_rules:
@@ -75,13 +68,6 @@ class TrustDatabase:
             if tag_hash not in votes_on_tags:
                 votes_on_tags[tag_hash] = ([], [])
             votes_on_tags[tag_hash][1].append(1 if vote.is_accurate else -1)
-
-        # Tags created by user B should implicitly be upvoted
-        for tag_by_b in self.tags_db.get_tags_created_by_user(int(user_b)):
-            tag_hash = hash(tag_by_b)
-            if tag_hash not in votes_on_tags:
-                votes_on_tags[tag_hash] = ([], [])
-            votes_on_tags[tag_hash][1].append(1)
 
         #print("Votes between %s and %s: %s (rules) %s (tags)" % (user_a, user_b, votes_on_rules, votes_on_tags))
 

@@ -1,11 +1,13 @@
 class Vote:
 
-    def __init__(self, user_id, cid, tag, rules_ids, is_accurate):
-        self.user_id = user_id
+    def __init__(self, user_id: int, cid, tag, is_accurate, authors, rules_ids, virtual):
+        self.user_id: int = user_id
         self.cid = cid
         self.tag = tag
-        self.rules_ids = rules_ids or []
         self.is_accurate = is_accurate
+        self.authors = authors
+        self.rules_ids = rules_ids
+        self.virtual = virtual
 
     def __str__(self):
-        return "Vote(user %s, cid %s, rules: %s)" % (self.user_id, self.cid, self.rules_ids)
+        return "Vote(user %s, cid %s)" % (self.user_id, self.cid)

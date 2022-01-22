@@ -23,23 +23,31 @@ class User:
 
     def __init__(self, identifier, user_type=UserType.HONEST):
         self.identifier = identifier
-        self.tags_db: TagsDatabase = TagsDatabase()
-        self.content_db = ContentDatabase(self.tags_db)
         self.rules_db = RulesDatabase()
-        self.votes_db: VotesDatabase = VotesDatabase(self.identifier)
-        self.trust_db = TrustDatabase(self.identifier, self.votes_db, self.tags_db)
+        self.tags_db: TagsDatabase = TagsDatabase(self.rules_db)
+        self.content_db = ContentDatabase(self.tags_db)
+        self.votes_db: VotesDatabase = VotesDatabase(hash(self))
+        self.trust_db = TrustDatabase(hash(self), self.votes_db, self.tags_db)
         self.neighbours = []
         self.type = user_type
 
     def connect(self, other_user):
         self.neighbours.append(other_user)
 
-    def vote(self, tag, is_accurate):
+    def vote(self, tag: Tag, is_accurate: bool, by_user: Optional[int] = None, virtual=False) -> None:
+        """
+        Vote for a particular tag.
+        :param tag: The tag being voted on.
+        :param is_accurate: Whether the vote is positive or negative.
+        :param by_user: The user that created the vote - by default the current user.
+        :param virtual: Whether the vote is on a tag created by itself. If so, the vote is not shared with others.
+        """
+        by_user = by_user or hash(self)
         content_item = self.content_db.get_content(tag.cid)
         if not content_item:
-            raise RuntimeError("Content item with ID %s not found in the database of user %s!" % (tag.cid, self.identifier))
+            raise RuntimeError("Content item with ID %s not found in the database of user %s!" % (tag.cid, hash(self)))
 
-        vote = Vote(self.identifier, tag.cid, tag.name, tag.rules, is_accurate)
+        vote = Vote(by_user, tag.cid, tag.name, is_accurate, tag.authors, tag.rules, virtual)
         self.votes_db.add_vote(vote)
 
     def tag(self, content_id: int, tag_name: str) -> Optional[Tag]:
@@ -54,11 +62,19 @@ class User:
 
         tag = content.add_tag(tag_name, author_id=hash(self))
         self.tags_db.add_tag(tag)
+
+        # Automatically upvote your own tag by creating a new vote
+        self.vote(tag, True, virtual=True)
+
         return tag
 
     def apply_rules_to_content(self):
         for rule in self.rules_db.get_all_rules():
-            self.content_db.apply_rule(rule)
+            created_tags = self.content_db.apply_rule(rule)
+
+            # The author of the rule always upvotes the generated tags (used to compute similarity).
+            for tag in created_tags:
+                self.vote(tag, True, by_user=rule.author, virtual=True)
 
     def recompute_reputations(self):
         """
@@ -75,12 +91,12 @@ class User:
         # Compute the reputations of tags
         self.compute_tags_reputation()
 
+        # Compute the reputation of rules
+        self.compute_rules_reputation()
+
         # Compute the reputations of other users (based on their tag history)
         self.compute_user_reputation()
 
-        # # Compute the reputation of rules
-        # self.compute_rules_reputation()
-        #
         # Finally, we assign a weight to each tag, depending on the reputation score of the rules and authors
         # that generated/created it
         self.compute_tag_weights()
@@ -112,7 +128,7 @@ class User:
         rep_fractions = {}
         votes_for_tag = self.votes_db.get_votes_for_tag(hash(tag))
         for vote in votes_for_tag:
-            correlation = self.trust_db.get_correlation_coefficient(self.identifier, vote.user_id)
+            correlation = self.trust_db.get_correlation_coefficient(hash(self), vote.user_id)
             if -0.2 < correlation < 0.2:
                 continue
 
@@ -133,7 +149,12 @@ class User:
         for rule in self.rules_db.get_all_rules():
             votes = {}
             print("Computing reputation for rule %d" % rule.rule_id)
-            votes_for_rule = self.votes_db.get_votes_for_rule(hash(rule))
+
+            tags_for_rule = self.tags_db.get_tags_generated_by_rule(rule)
+            votes_for_rule = []
+            for tag in tags_for_rule:
+                votes_for_rule += self.votes_db.get_votes_for_tag(hash(tag))
+
             if not votes_for_rule:
                 rule.reputation_score = 0
                 continue
@@ -148,7 +169,7 @@ class User:
 
             rep_fractions = {}
             for user_id, user_votes in votes[rule.rule_id].items():
-                correlation = self.trust_db.get_correlation_coefficient(self.identifier, user_id)
+                correlation = self.trust_db.get_correlation_coefficient(hash(self), user_id)
                 if -0.2 < correlation < 0.2:
                     continue
                 print("Opinion of user %s on rule %s: %f (votes: %d, weight: %f, correlation: %f)" % (user_id, rule.rule_id, average(user_votes), len(user_votes), self.trust_db.max_flows[user_id], correlation))
@@ -187,7 +208,7 @@ class User:
 
     def __str__(self):
         user_status = "honest" if self.type == UserType.HONEST else "adversarial"
-        return "User %s (%s)" % (self.identifier, user_status)
+        return "User %s (%s)" % (hash(self), user_status)
 
     def __hash__(self):
         return int(self.identifier)

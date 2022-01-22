@@ -1,5 +1,6 @@
 from enum import Enum
 from random import Random
+from typing import List
 
 
 class RuleType(Enum):
@@ -9,14 +10,15 @@ class RuleType(Enum):
 
 class Rule:
 
-    def __init__(self, rule_id, output_tag, coverage=1, error_rate=0, rule_type=RuleType.ACCURATE):
+    def __init__(self, author, rule_id, output_tag, coverage=1, error_rate=0, rule_type=RuleType.ACCURATE):
+        self.author = author
         self.rule_id = rule_id
         self.output_tag = output_tag
         self.reputation_score = 0
         self.coverage = coverage
         self.error_rate = error_rate
-        self.applicable_content_ids_correct = []
-        self.applicable_content_ids_incorrect = []
+        self.applicable_content_ids_correct: List[int] = []
+        self.applicable_content_ids_incorrect: List[int] = []
         self.type = rule_type
 
     def determine_applicable_content(self, total_num_items):
@@ -39,7 +41,7 @@ class Rule:
             hash(self), len(self.applicable_content_ids_correct), len(self.applicable_content_ids_incorrect)))
 
     def get_copy(self):
-        r = Rule(self.rule_id, self.output_tag, self.coverage)
+        r = Rule(self.author, self.rule_id, self.output_tag, self.coverage)
         r.applicable_content_ids_correct = self.applicable_content_ids_correct
         r.applicable_content_ids_incorrect = self.applicable_content_ids_incorrect
         r.type = self.type
