@@ -314,7 +314,7 @@ class Experiment:
                     if user.type != UserType.HONEST:
                         continue
                     for other_user_id in self.user_reputation_per_round[round][user_id]:
-                        other_user = self.get_user_by_id("%d" % other_user_id)
+                        other_user = self.get_user_by_id(other_user_id)
                         reputations_file.write(
                             "%d,%d,%d,%s,%s,%.3f\n" % (round, user.type.value, other_user.type.value, user_id, other_user_id, self.user_reputation_per_round[round][user_id][other_user_id]))
 
