@@ -362,7 +362,6 @@ class Experiment:
         with open("data/votes.csv", "w") as votes_file:
             votes_file.write("user_id,content_id,tag,vote\n")
             for user in self.users:
-                print(user.votes_db.votes)
                 for vote in user.votes_db.get_votes_for_user(hash(user)):
                     votes_file.write("%d,%s,%s,%d\n" % (hash(user), vote.cid, vote.tag, 1 if vote.is_accurate else -1))
 
