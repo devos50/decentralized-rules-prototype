@@ -22,6 +22,7 @@ completed_movies = set()
 print("Load movie IDs...")
 with open(TAGS_PER_MOVIE_FILE) as tags_per_movie_file:
     csv_reader = csv.reader(tags_per_movie_file)
+    next(csv_reader)
     for row in csv_reader:
         movie_queue.append(row[0])
 
