@@ -9,6 +9,7 @@ TAGS_FILE = "/Users/martijndevos/Downloads/ml-25m/tags.csv"
 
 tags_per_user = defaultdict(lambda: 0)
 tags_per_movie = defaultdict(lambda: 0)
+total_votes = 0
 
 with open(TAGS_FILE) as tags_file:
     parsed_header = False
@@ -18,6 +19,7 @@ with open(TAGS_FILE) as tags_file:
     for csv_line in csv_reader:
         user_id, movie_id, tag, timestamp = csv_line
         tags_per_user[user_id] += 1
+        total_votes += 1
         tags_per_movie[movie_id] += 1
 
 # Write data
@@ -32,5 +34,6 @@ with open("data/tags_per_movie.csv", "w") as out_file:
     for movie_id, num_tags in sorted(tags_per_movie.items(), key=lambda x: x[1], reverse=True):
         out_file.write("%s,%s\n" % (movie_id, num_tags))
 
+print("Total votes: %d" % total_votes)
 print("Unique users that tagged: %d" % len(tags_per_user))
 print("Unique movies: %d" % len(tags_per_movie))
