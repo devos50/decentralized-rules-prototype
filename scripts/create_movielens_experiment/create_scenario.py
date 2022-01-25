@@ -26,9 +26,10 @@ experiment_start_time = 1E20
 experiment_end_time = -1
 votes_per_movie = {}
 initial_tag_timestamps = {}
+user_tag_creation = {}
 
 
-def get_user_that_tagged():
+def get_user_that_tagged(movie_id, tag):
     while True:
         s = np.random.lognormal(MU, SIGMA, 1)
         if s[0] > MAX_X:
@@ -37,7 +38,17 @@ def get_user_that_tagged():
         # Determine the lucky user
         bin_size = MAX_X / NUM_USERS
         user_id = int(s[0] / bin_size)
+
+        if user_id in user_tag_creation and (movie_id, tag) in user_tag_creation[user_id]:
+            continue
+
         return user_id
+
+
+def set_user_tagged(user_id, movie_id, tag):
+    if user_id not in user_tag_creation:
+        user_tag_creation[user_id] = set()
+    user_tag_creation[user_id].add((movie_id, tag))
 
 
 # Get the list of popular movies
@@ -103,6 +114,10 @@ for movie_id in movies_to_include:
     for tag, voting_info in votes_per_movie[movie_id].items():
         num_upvotes, num_downvotes = voting_info
 
+        # The sum of upvotes/downvotes cannot exceed the number of users
+        if num_upvotes + num_downvotes > NUM_USERS:
+            continue  # Simply ignore this tag
+
         lowest_timestamp_for_create_tag = 1E20
         for ind in range(num_upvotes):
             if ind == 0:  # Initial creation - set it to the initial timestamp if available
@@ -115,13 +130,17 @@ for movie_id in movies_to_include:
             else:
                 tag_timestamp = random.randint(initial_tag_timestamps[(movie_id, tag)], experiment_end_time)
 
-            tag_actions.append((tag_timestamp, get_user_that_tagged(), movie_id, tag, True))
+            user_id = get_user_that_tagged(movie_id, tag)
+            tag_actions.append((tag_timestamp, user_id, movie_id, tag, True))
+            set_user_tagged(user_id, movie_id, tag)
             if tag_timestamp < lowest_timestamp_for_create_tag:
                 lowest_timestamp_for_create_tag = tag_timestamp
 
         for ind in range(num_downvotes):
+            user_id = get_user_that_tagged(movie_id, tag)
             tag_timestamp = random.randint(lowest_timestamp_for_create_tag, experiment_end_time)
-            tag_actions.append((tag_timestamp, get_user_that_tagged(), movie_id, tag, False))
+            tag_actions.append((tag_timestamp, user_id, movie_id, tag, False))
+            set_user_tagged(user_id, movie_id, tag)
 
 tag_actions = sorted(tag_actions, key=lambda t: t[0])  # Sort on timestamp
 
