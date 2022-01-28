@@ -43,7 +43,6 @@ class TrustDatabase:
         We then take the average of all absolute differences, and take the average of these differences.
         We then subtract this final value from 1, which gives a value in the interval [-1, 1].
         """
-        print("Computing similarity between %s and %s" % (user_a, user_b))
         votes_on_rules = {}  # Rule => ([...], [...])
         votes_on_tags = {}
 

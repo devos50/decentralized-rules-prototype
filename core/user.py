@@ -40,11 +40,11 @@ class User:
         self.neighbours.append(other_user)
         self.peers_db.add_peer(hash(other_user))
 
-    async def start_vote_exchange(self, exchange_interval):
+    async def start_vote_exchange(self, exchange_interval, gossip_batch_size):
         while True:
             # Exchange random votes with one neighbour
             neighbour = random.choice(self.neighbours)
-            votes = self.votes_db.get_random_votes()
+            votes = self.votes_db.get_random_votes(limit=gossip_batch_size)
             print("%s exchanging %d vote(s) with %s" % (self, len(votes), neighbour))
             for vote in votes:
                 neighbour.process_incoming_vote(vote)

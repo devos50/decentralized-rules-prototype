@@ -400,7 +400,8 @@ class Experiment:
         loop = get_event_loop()
         for user in self.users:
             loop.call_later(random.randint(0, self.settings.exchange_interval),
-                            lambda u=user: ensure_future(u.start_vote_exchange(self.settings.exchange_interval)))
+                            lambda u=user: ensure_future(u.start_vote_exchange(self.settings.exchange_interval,
+                                                                               self.settings.gossip_batch_size)))
 
         await sleep(self.settings.duration)
 

@@ -6,8 +6,8 @@ import random
 
 import numpy as np
 
-NUM_USERS = 100
-NUM_MOVIES = 10
+NUM_USERS = 10
+NUM_MOVIES = 5
 TAKE_RANDOM_MOVIES = True  # If false, we will take the top X tagged movies
 DURATION = 300  # Experiment duration in seconds
 MAX_X = 300
