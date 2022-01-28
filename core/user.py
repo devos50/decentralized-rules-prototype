@@ -1,8 +1,11 @@
+import random
+from asyncio import sleep
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 from numpy import average
 
+from core.content import Content
 from core.db.content_database import ContentDatabase
 from core.db.peers_database import PeersDatabase
 from core.db.rules_database import RulesDatabase
@@ -30,46 +33,65 @@ class User:
         self.content_db = ContentDatabase(self.tags_db)
         self.votes_db: VotesDatabase = VotesDatabase(hash(self))
         self.trust_db = TrustDatabase(hash(self), self.votes_db, self.tags_db)
-        self.neighbours = []
+        self.neighbours: List[User] = []
         self.type = user_type
 
     def connect(self, other_user):
         self.neighbours.append(other_user)
         self.peers_db.add_peer(hash(other_user))
 
-    def vote(self, tag: Tag, is_accurate: bool, by_user: Optional[int] = None, virtual=False) -> None:
-        """
-        Vote for a particular tag.
-        :param tag: The tag being voted on.
-        :param is_accurate: Whether the vote is positive or negative.
-        :param by_user: The user that created the vote - by default the current user.
-        :param virtual: Whether the vote is on a tag created by itself. If so, the vote is not shared with others.
-        """
-        by_user = by_user or hash(self)
-        content_item = self.content_db.get_content(tag.cid)
-        if not content_item:
-            raise RuntimeError("Content item with ID %s not found in the database of user %s!" % (tag.cid, hash(self)))
+    async def start_vote_exchange(self, exchange_interval):
+        while True:
+            # Exchange random votes with one neighbour
+            neighbour = random.choice(self.neighbours)
+            votes = self.votes_db.get_random_votes()
+            print("%s exchanging %d vote(s) with %s" % (self, len(votes), neighbour))
+            for vote in votes:
+                neighbour.process_incoming_vote(vote)
+            await sleep(exchange_interval)
 
-        vote = Vote(by_user, tag.cid, tag.name, is_accurate, tag.authors, tag.rules, virtual)
+    def process_incoming_vote(self, vote: Vote):
+        content_item = self.content_db.get_content(vote.cid)
+        if not content_item:
+            # It looks like this content doesn't exist in the user database - create it
+            content_item = Content(str(vote.cid), 1)
+            self.content_db.add_content(content_item)
+
+        tag = content_item.get_tag_with_name(vote.tag)
+        if not tag:
+            # It looks like this tag does not exist yet - create it
+            tag = Tag(vote.tag, vote.cid)
+            self.tags_db.add_tag(tag)
+            content_item.add_tag(tag)
+
+        tag.authors.add(vote.user_id)
         self.votes_db.add_vote(vote)
 
-    def tag(self, content_id: int, tag_name: str) -> Optional[Tag]:
+    def vote(self, cid: int, tag_name: str, is_accurate: bool) -> None:
         """
-        Annotate some content with a tag.
+        Vote for a particular tag.
+        :param cid: The identifier of the content that contains the tag being voted on.
+        :param tag_name: The tag string being voted on.
+        :param is_accurate: Whether the vote is positive or negative.
         """
-        content = self.content_db.get_content(content_id)
-        if not content:
-            return None
+        by_user = hash(self)
+        content_item = self.content_db.get_content(cid)
+        if not content_item:
+            # It looks like this content doesn't exist in the user database - create it
+            content_item = Content(str(cid), 1)
+            self.content_db.add_content(content_item)
 
-        print("%s tags content %s with name: %s" % (self, hash(content), tag_name))
+        tag = content_item.get_tag_with_name(tag_name)
+        if not tag:
+            # It looks like this tag does not exist yet - create it
+            tag = Tag(tag_name, cid)
+            self.tags_db.add_tag(tag)
+            content_item.add_tag(tag)
 
-        tag = content.add_tag(tag_name, author_id=hash(self))
-        self.tags_db.add_tag(tag)
+        tag.authors.add(by_user)
 
-        # Automatically upvote your own tag by creating a new vote
-        self.vote(tag, True, virtual=True)
-
-        return tag
+        vote = Vote(by_user, tag.cid, tag.name, is_accurate, tag.authors, tag.rules)
+        self.votes_db.add_vote(vote)
 
     def apply_rules_to_content(self):
         for rule in self.rules_db.get_all_rules():
@@ -114,12 +136,9 @@ class User:
                 self.compute_tag_reputation(tag)
 
     def compute_user_reputation(self):
-        self.trust_db.user_reputations = {}
+        self.trust_db.user_reputations = {hash(self): 1}
         for user_id in self.peers_db.get_peers():
             print("Computing reputation of user %d" % user_id)
-            if user_id == hash(self):
-                self.trust_db.user_reputations[user_id] = 1  # You fully trust yourself
-                continue
 
             # This will also include tags generated by a rule created by the user
             tag_reps = [tag.reputation_score for tag in self.tags_db.get_tags_created_by_user(user_id)]
@@ -132,6 +151,7 @@ class User:
         """
         Compute the reputation of a particular tag.
         """
+        print("Computing reputation of tag %s" % tag)
         rep_fractions = {}
         votes_for_tag = self.votes_db.get_votes_for_tag(hash(tag))
         for vote in votes_for_tag:

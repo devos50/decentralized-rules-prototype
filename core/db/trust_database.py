@@ -17,8 +17,8 @@ class TrustDatabase:
         Compute the similarity scores to all neighbours, based on the acquired local knowledge.
         """
         self.similarity_scores = {}
-        for uid1 in self.votes_db.votes.keys():
-            for uid2 in self.votes_db.votes.keys():
+        for uid1 in self.votes_db.votes_per_user.keys():
+            for uid2 in self.votes_db.votes_per_user.keys():
                 if uid1 == uid2 and uid1 != self.my_id:
                     continue
                 similarity = self.compute_similarity_coefficient(uid1, uid2)
@@ -33,7 +33,7 @@ class TrustDatabase:
     def get_similarity_coefficient(self, uid1, uid2):
         return self.similarity_scores[uid1][uid2] if uid1 in self.similarity_scores and uid2 in self.similarity_scores[uid1] else 0
 
-    def compute_similarity_coefficient(self, user_a, user_b):
+    def compute_similarity_coefficient(self, user_a: int, user_b: int) -> float:
         """
         Compute the similarity coefficient from the perspective of this user.
 

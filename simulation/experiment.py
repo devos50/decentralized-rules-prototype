@@ -1,4 +1,5 @@
 import random
+from asyncio import sleep, get_event_loop, ensure_future
 from typing import Dict, List, Set
 
 import networkx as nx
@@ -7,7 +8,8 @@ from core.content import Content
 from core.rule import Rule, RuleType
 from core.tag import Tag
 from core.user import User, UserType
-from settings import RuleCoverageDistribution, ContentPopularityDistribution
+from simulation.scenario import Scenario, ScenarioAction
+from simulation.settings import RuleCoverageDistribution, ContentPopularityDistribution
 
 random.seed(42)
 
@@ -22,6 +24,7 @@ class Experiment:
         self.users: List[User] = []
         self.users_by_type: Dict[UserType: List[User]] = {}
         self.round = 0
+        self.scenario = None
 
         # We keep track of the tags that are inaccurate and should be classified as such by end users.
         # Only used for experimental evaluation. In a deployed system, this information is not available.
@@ -31,6 +34,26 @@ class Experiment:
         self.rules_reputation_per_round = {}
         self.tags_reputation_per_round = {}
         self.user_reputation_per_round = {}
+
+        if settings.scenario_file:
+            self.scenario = Scenario(settings.scenario_file)
+            self.scenario.parse()
+
+    def setup_scenario(self):
+        # Create the users
+        for user_ind in self.scenario.unique_users:
+            user = User("%d" % user_ind, user_type=UserType.HONEST)
+            self.users.append(user)
+
+        # Schedule the scenario actions
+        loop = get_event_loop()
+        for action in self.scenario.actions:
+            loop.call_at(action.timestamp, lambda a=action: self.execute_user_action(a))
+
+    def execute_user_action(self, action: ScenarioAction):
+        if action.command == "vote":
+            user = self.get_user_by_id(action.user_id)
+            user.vote(action.movie_id, action.tag, action.is_upvote)
 
     def get_user_by_id(self, user_id: int):
         for user in self.users:
@@ -174,14 +197,14 @@ class Experiment:
             num_items_to_tag = min(len(all_content), int(len(all_content) * self.settings.initial_tags_created_per_user))
             content_to_tag = random.sample(all_content, num_items_to_tag)
             for content in content_to_tag:
-                tag_id = tag_id = hash(user) * 10000 + hash(content)
-                tag = user.tag(hash(content), "Tag %d" % tag_id)
+                tag_id = hash(user) * 10000 + hash(content)
+                tag = user.tag(content, "Tag %d" % tag_id)
                 created_tags.append(tag)
         elif user.type == UserType.TAG_SPAMMER:
             # Spammers create inaccurate tags on all content they find
             for content in user.content_db.get_all_content():
                 tag_id = hash(user) * 10000 + hash(content)
-                tag = user.tag(hash(content), "Tag %d" % tag_id)
+                tag = user.tag(content, "Tag %d" % tag_id)
                 created_tags.append(tag)
 
                 self.inaccurate_tags.add(hash(tag))
@@ -364,69 +387,28 @@ class Experiment:
                 for vote in user.votes_db.get_votes_for_user(hash(user)):
                     votes_file.write("%d,%s,%s,%d\n" % (hash(user), vote.cid, vote.tag, 1 if vote.is_accurate else -1))
 
-    def run(self):
-        self.create_content()
-        self.create_users()
+    async def run(self):
+        if self.settings.scenario_file:
+            self.setup_scenario()
+        else:
+            self.create_content()
+            self.create_users()
 
         self.connect_users()
-        self.evaluate_rounds()
 
-    def evaluate_rounds(self):
-        if self.settings.compute_reputations_per_round:
-            self.recompute_all_reputations()
+        # Start the routine for exchanging votes
+        loop = get_event_loop()
+        for user in self.users:
+            loop.call_later(random.randint(0, self.settings.exchange_interval),
+                            lambda u=user: ensure_future(u.start_vote_exchange(self.settings.exchange_interval)))
 
-        for round in range(1, self.settings.rounds + 1):
-            print("Evaluating round %d" % round)
-            # For each user, get the voting history of other users and compute the similarity between voting histories
-            for user in self.users:
-                # Adversarial nodes do nothing for now
-                if user.type != UserType.HONEST:
-                    continue
+        await sleep(self.settings.duration)
 
-                rules_created = user.rules_db.get_rule_ids_created_by_user(hash(user))
-
-                # Take a random content item and cast votes on the tags
-                content_item = user.content_db.get_random_content_item_by_popularity()
-                print("%s interacts with content %s" % (user, content_item.name))
-                for tag in content_item.tags:
-                    if hash(user) not in tag.authors and not set(rules_created).intersection(tag.rules):
-                        self.cast_honest_user_vote(user, tag)
-
-                # Exchange votes with one neighbour
-                neighbour = random.choice(user.neighbours)
-                neighbour_votes = neighbour.votes_db.get_random_votes(hash(neighbour))
-                user.votes_db.add_votes(neighbour_votes)
-            self.round = round
-
-            if self.settings.compute_reputations_per_round:
-                self.recompute_all_reputations()
-
-        if not self.settings.compute_reputations_per_round:
-            self.recompute_all_reputations()
-
-        if self.settings.do_correction_afterwards:
-            print("Doing corrections...")
-            for user in self.users:
-                if user.type != UserType.HONEST:
-                    continue
-
-                did_vote = False
-                for rule in user.rules_db.get_all_rules():
-                    if rule.reputation_score < 0 and rule.type == RuleType.ACCURATE:
-                        # Find a tag to vote for
-                        for content in user.content_db.get_all_content():
-                            for tag in content.tags:
-                                if rule.rule_id in tag.rules:
-                                    print("%s votes on rule %s (cid: %s)" % (user, rule.rule_id, tag.cid))
-                                    user.vote(tag, True)
-                                    did_vote = True
-                                    break
-
-                            if did_vote:
-                                break
-
-            self.recompute_all_reputations()
+        self.recompute_all_reputations()
         self.write_data()
+
+        loop = get_event_loop()
+        loop.stop()
 
     def recompute_all_reputations(self):
         self.rules_reputation_per_round[self.round] = {}

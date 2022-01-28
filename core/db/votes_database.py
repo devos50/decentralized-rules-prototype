@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, Dict, Set
 
 from core.vote import Vote
 
@@ -8,14 +8,17 @@ class VotesDatabase:
 
     def __init__(self, my_id):
         self.my_id = my_id
-        self.votes = {}
+        self.votes: Set[Vote] = set()
+        self.votes_per_user: Dict[int, Set[Vote]] = {}
         self.votes_for_content = {}
         self.votes_for_tag = {}
 
     def add_vote(self, vote):
-        if vote.user_id not in self.votes:
-            self.votes[vote.user_id] = set()
-        self.votes[vote.user_id].add(vote)
+        self.votes.add(vote)
+
+        if vote.user_id not in self.votes_per_user:
+            self.votes_per_user[vote.user_id] = set()
+        self.votes_per_user[vote.user_id].add(vote)
 
         if vote.cid not in self.votes_for_content:
             self.votes_for_content[vote.cid] = []
@@ -27,9 +30,7 @@ class VotesDatabase:
         self.votes_for_tag[tag_hash].append(vote)
 
     def has_vote(self, vote):
-        if vote.user_id not in self.votes:
-            return False
-        return vote in self.votes[vote.user_id]
+        return vote in self.votes
 
     def add_votes(self, votes):
         for vote in votes:
@@ -38,15 +39,12 @@ class VotesDatabase:
 
             self.add_vote(vote)
 
-    def get_random_votes(self, user_id, limit=10):
-        if user_id not in self.votes:
-            return []
-        user_votes = [vote for vote in list(self.get_votes_for_user(user_id)) if not vote.virtual]
-        return random.sample(user_votes, min(len(user_votes), limit))
+    def get_random_votes(self, limit: int = 10) -> List[Vote]:
+        return random.sample(self.votes, min(len(self.votes), limit))
 
     def get_votes_for_user(self, user_id):
-        if user_id in self.votes:
-            return self.votes[user_id]
+        if user_id in self.votes_per_user:
+            return self.votes_per_user[user_id]
         return []
 
     def get_votes_for_tag(self, tag_id) -> List[Vote]:

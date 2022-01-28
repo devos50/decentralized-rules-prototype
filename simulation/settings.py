@@ -16,7 +16,11 @@ class ContentPopularityDistribution(Enum):
 
 @dataclass
 class ExperimentSettings:
-    rounds = 20
+    duration = 20  # Experiment duration in seconds
+    scenario_file = "scripts/create_movielens_experiment/data/scenarios/tag_experiment_100.scenario"
+
+    # Gossip parameters
+    exchange_interval = 5
 
     # Content parameters
     num_content_items = 1

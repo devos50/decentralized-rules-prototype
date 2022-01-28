@@ -12,10 +12,10 @@ class ContentDatabase:
         self.content: Dict[int, Content] = {}
         self.tags_db = tags_db
 
-    def add_content(self, content):
+    def add_content(self, content: Content):
         self.content[hash(content)] = content
 
-    def get_content(self, cid):
+    def get_content(self, cid: int):
         return self.content[cid] if cid in self.content else None
 
     def get_all_content(self) -> List[Content]:
