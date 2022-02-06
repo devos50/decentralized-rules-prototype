@@ -313,6 +313,17 @@ class Experiment:
                     similarities_file.write(
                         "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity))
 
+    def write_similarity_flows(self):
+        with open("data/similarity_flows.csv", "w") as similarity_flows_file:
+            similarity_flows_file.write("user_type,user_id,other_user_id,similarity_fraction\n")
+            for user in self.users:
+                my_similarity_flow = user.trust_db.max_flows[hash(user)]
+                flow_sums = sum(user.trust_db.max_flows.values()) - my_similarity_flow
+                for to_user_id, similarity_flow in user.trust_db.max_flows.items():
+                    frac = 1 if to_user_id == user else similarity_flow / flow_sums
+                    similarity_flows_file.write(
+                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, frac))
+
     def write_reputations(self):
         # Write the reputation of tags
         with open("data/tag_reputations.csv", "w") as reputations_file:
@@ -427,12 +438,13 @@ class Experiment:
                 print("Reputation of user %s: %f" % (other_user_id, user_rep))
                 self.user_reputation_per_round[self.round][hash(user)][other_user_id] = user_rep
             for tag in user.tags_db.get_all_tags():
-                print("Reputation tag %s: %f" % (hash(tag), tag.reputation_score))
+                #print("Reputation tag %s: %f" % (hash(tag), tag.reputation_score))
                 self.tags_reputation_per_round[self.round][hash(user)][hash(tag)] = tag.reputation_score
 
     def write_data(self):
         self.write_similarity_graph()
         self.write_similarities()
+        self.write_similarity_flows()
         self.write_reputations()
         self.write_tags()
         self.write_votes()

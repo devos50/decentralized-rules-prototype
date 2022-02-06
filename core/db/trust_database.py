@@ -52,10 +52,9 @@ class TrustDatabase:
                     votes_on_rules[rule_id] = ([], [])
                 votes_on_rules[rule_id][0].append(1 if vote.is_accurate else -1)
 
-            tag_hash = hash((vote.cid, vote.tag))
-            if tag_hash not in votes_on_tags:
-                votes_on_tags[tag_hash] = ([], [])
-            votes_on_tags[tag_hash][0].append(1 if vote.is_accurate else -1)
+            if (vote.cid, vote.tag) not in votes_on_tags:
+                votes_on_tags[(vote.cid, vote.tag)] = ([], [])
+            votes_on_tags[(vote.cid, vote.tag)][0].append(1 if vote.is_accurate else -1)
 
         for vote in self.votes_db.get_votes_for_user(user_b):
             for rule_id in vote.rules_ids:
@@ -63,10 +62,9 @@ class TrustDatabase:
                     votes_on_rules[rule_id] = ([], [])
                 votes_on_rules[rule_id][1].append(1 if vote.is_accurate else -1)
 
-            tag_hash = hash((vote.cid, vote.tag))
-            if tag_hash not in votes_on_tags:
-                votes_on_tags[tag_hash] = ([], [])
-            votes_on_tags[tag_hash][1].append(1 if vote.is_accurate else -1)
+            if (vote.cid, vote.tag) not in votes_on_tags:
+                votes_on_tags[(vote.cid, vote.tag)] = ([], [])
+            votes_on_tags[(vote.cid, vote.tag)][1].append(1 if vote.is_accurate else -1)
 
         #print("Votes between %s and %s: %s (rules) %s (tags)" % (user_a, user_b, votes_on_rules, votes_on_tags))
 
@@ -115,3 +113,4 @@ class TrustDatabase:
         # Your own flow is the sum of flows to the other nodes.
         # This ensures that your opinion is weighted in with 50%.
         self.max_flows[self.my_id] = sum(self.max_flows.values()) if self.max_flows else 1
+        print(self.max_flows)

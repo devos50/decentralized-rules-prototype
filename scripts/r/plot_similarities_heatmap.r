@@ -4,7 +4,7 @@ dat <- read.csv("../../data/similarities.csv")
 
 p <- ggplot(dat, aes(x=user_id, y=other_user_id, fill=similarity)) +
      geom_tile() +
-     scale_fill_gradient(low="red", high="darkgreen") +
+     scale_fill_gradientn(colours=c("red", "white", "darkgreen"), limits=c(-1, 1)) +
      ylab("Target user ID") +
      xlab("Source user ID") +
      scale_x_continuous(expand=c(0,0)) +

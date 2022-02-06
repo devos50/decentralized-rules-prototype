@@ -45,7 +45,7 @@ class User:
             # Exchange random votes with one neighbour
             neighbour = random.choice(self.neighbours)
             votes = self.votes_db.get_random_votes(limit=gossip_batch_size)
-            print("%s exchanging %d vote(s) with %s" % (self, len(votes), neighbour))
+            #print("%s exchanging %d vote(s) with %s" % (self, len(votes), neighbour))
             for vote in votes:
                 neighbour.process_incoming_vote(vote)
             await sleep(exchange_interval)
@@ -151,7 +151,7 @@ class User:
         """
         Compute the reputation of a particular tag.
         """
-        print("Computing reputation of tag %s" % tag)
+        #print("Computing reputation of tag %s" % tag)
         rep_fractions = {}
         votes_for_tag = self.votes_db.get_votes_for_tag(hash(tag))
         for vote in votes_for_tag:

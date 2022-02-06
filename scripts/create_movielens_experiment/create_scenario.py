@@ -6,8 +6,9 @@ import random
 
 import numpy as np
 
-NUM_USERS = 10
-NUM_MOVIES = 5
+NUM_HONEST_USERS = 20
+NUM_SPAMMERS = 5
+NUM_MOVIES = 100
 TAKE_RANDOM_MOVIES = True  # If false, we will take the top X tagged movies
 DURATION = 300  # Experiment duration in seconds
 MAX_X = 300
@@ -15,8 +16,6 @@ MAX_X = 300
 # Parameters for the estimation of user tag creation/deletion behaviour
 MU = 2.386474
 SIGMA = 2.107494
-
-# TODO include adversaries
 
 popular_movie_ids = []
 movie_ids_we_have_tags_for = set()
@@ -29,14 +28,17 @@ initial_tag_timestamps = {}
 user_tag_creation = {}
 
 
-def get_user_that_tagged(movie_id, tag):
+def get_user_that_tagged(movie_id, tag, get_uniform_random=True):
+    if get_uniform_random:
+        return random.randint(0, NUM_HONEST_USERS)
+
     while True:
         s = np.random.lognormal(MU, SIGMA, 1)
         if s[0] > MAX_X:
             continue
 
         # Determine the lucky user
-        bin_size = MAX_X / NUM_USERS
+        bin_size = MAX_X / NUM_HONEST_USERS
         user_id = int(s[0] / bin_size)
 
         if user_id in user_tag_creation and (movie_id, tag) in user_tag_creation[user_id]:
@@ -113,9 +115,10 @@ tag_actions = []   # Tuple (timestamp, user_id, movie_id, tag, is_create)
 for movie_id in movies_to_include:
     for tag, voting_info in votes_per_movie[movie_id].items():
         num_upvotes, num_downvotes = voting_info
+        print("Considering tag %s with %d upvotes and %d downvotes" % (tag, num_upvotes, num_downvotes))
 
         # The sum of upvotes/downvotes cannot exceed the number of users
-        if num_upvotes + num_downvotes > NUM_USERS:
+        if num_upvotes + num_downvotes > NUM_HONEST_USERS:
             continue  # Simply ignore this tag
 
         lowest_timestamp_for_create_tag = 1E20
@@ -130,7 +133,7 @@ for movie_id in movies_to_include:
             else:
                 tag_timestamp = random.randint(initial_tag_timestamps[(movie_id, tag)], experiment_end_time)
 
-            user_id = get_user_that_tagged(movie_id, tag)
+            user_id = get_user_that_tagged(movie_id, tag, get_uniform_random=(ind == 0))
             tag_actions.append((tag_timestamp, user_id, movie_id, tag, True))
             set_user_tagged(user_id, movie_id, tag)
             if tag_timestamp < lowest_timestamp_for_create_tag:
@@ -142,10 +145,28 @@ for movie_id in movies_to_include:
             tag_actions.append((tag_timestamp, user_id, movie_id, tag, False))
             set_user_tagged(user_id, movie_id, tag)
 
+# Include the actions of spammers
+all_tags = []
+for movie_id in movies_to_include:
+    for tag, voting_info in votes_per_movie[movie_id].items():
+        num_upvotes, num_downvotes = voting_info
+
+        # The sum of upvotes/downvotes cannot exceed the number of users
+        if num_upvotes + num_downvotes > NUM_HONEST_USERS:
+            continue  # Simply ignore this tag
+
+        all_tags.append((movie_id, tag))
+
+for user_id in range(NUM_HONEST_USERS, NUM_HONEST_USERS + NUM_SPAMMERS):
+    tags_to_spam = random.sample(all_tags, int(len(all_tags)))
+    for movie_id, tag in tags_to_spam:
+        tag_timestamp = random.randint(initial_tag_timestamps[(movie_id, tag)], experiment_end_time)
+        tag_actions.append((tag_timestamp, user_id, movie_id, tag, False))
+
 tag_actions = sorted(tag_actions, key=lambda t: t[0])  # Sort on timestamp
 
 # Write the scenario
-with open("data/scenarios/tag_experiment_%d.scenario" % NUM_USERS, "w") as scenario_file:
+with open("data/scenarios/tag_experiment_%d.scenario" % NUM_HONEST_USERS, "w") as scenario_file:
     for timestamp, user_id, movie_id, tag, is_create in tag_actions:
         relative_timestamp = timestamp - experiment_start_time
         scaled_timestamp = relative_timestamp / (experiment_end_time - experiment_start_time) * DURATION
