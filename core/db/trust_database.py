@@ -104,13 +104,69 @@ class TrustDatabase:
 
                 if from_user_id == self.my_id and to_user_id != self.my_id:
                     other_user_ids.add(to_user_id)
-                flow_graph.add_edge(from_user_id, to_user_id, capacity=score)
+                if score != 0:
+                    flow_graph.add_edge(from_user_id, to_user_id, capacity=score)
 
         for other_user_id in other_user_ids:
-            flow_value, _ = nx.maximum_flow(flow_graph, self.my_id, other_user_id)
+            flow_value = self.compute_sign_aware_flow(flow_graph, self.my_id, other_user_id)
+            #flow_value, _ = nx.maximum_flow(flow_graph, self.my_id, other_user_id)
             self.max_flows[other_user_id] = flow_value
 
-        # Your own flow is the sum of flows to the other nodes.
-        # This ensures that your opinion is weighted in with 50%.
+        # Your own flow is the maximum of flows to the other nodes.
+        # This ensures that your opinion is weighted in as equal as the peer you trust most.
         self.max_flows[self.my_id] = max(self.max_flows.values()) if self.max_flows else 1
+
+        # Scale the values to the interval [-1, 1]
+        min_flow = min(self.max_flows.values())
+        max_flow = max(self.max_flows.values())
+        for user_id in self.max_flows:
+            f = self.max_flows[user_id]
+            if max_flow == min_flow:
+                self.max_flows[user_id] = 0
+            else:
+                self.max_flows[user_id] = 2 * ((f - min_flow) / (max_flow - min_flow)) - 1
+
+        print(self.similarity_scores[self.my_id])
         print(self.max_flows)
+
+    def compute_sign_aware_flow(self, orig_graph, s, t):
+        flow = 0
+        #print("S: %d, t: %d" % (s, t))
+        flow_graph = orig_graph.copy()
+        for edge in flow_graph.edges():
+            flow_graph[edge[0]][edge[1]]["flow"] = 0
+
+        while True:
+            queue = [s]
+            pred = {}
+            while queue:
+                cur_node = queue.pop(0)
+                for edge in flow_graph.edges(cur_node, data=True):
+                    cap = edge[2]["capacity"]
+                    if edge[1] not in pred and edge[1] != s and (cap >= 0 or (edge[1] == t)) and abs(cap) > edge[2]["flow"]:
+                        pred[edge[1]] = edge
+                        queue.append(edge[1])
+
+            if t not in pred:
+                break
+            else:
+                df = 100000000
+                e = pred[t]
+                while True:  # Determine the flow
+                    df = min(df, abs(e[2]["capacity"]) - e[2]["flow"])
+                    if e[0] not in pred:
+                        # We are done with this path - if the last edge of the path was negative, flip the sign
+                        if pred[t][2]["capacity"] < 0:
+                            df *= -1
+                        break
+                    e = pred[e[0]]
+
+                e = pred[t]
+                while True:  # Update edges
+                    e[2]["flow"] += abs(df)
+                    if e[0] not in pred:
+                        break
+                    e = pred[e[0]]
+                flow += df
+
+        return flow

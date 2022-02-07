@@ -10,11 +10,11 @@ import numpy as np
 
 BAD_TAG_THRESHOLD = -3
 
-NUM_HONEST_USERS = 10      # Users that create high-quality tags
+NUM_HONEST_USERS = 24      # Users that create high-quality tags
 NUM_BAD_TAGGER_USERS = 1   # Users that create low-quality tags
-NUM_SPAMMERS = 1           # Users that vote -1 on all tags
+NUM_SPAMMERS = 9           # Users that vote -1 on all tags
 
-NUM_MOVIES = 10
+NUM_MOVIES = 20
 TAKE_RANDOM_MOVIES = True  # If false, we will take the top X tagged movies
 DURATION = 900  # Experiment duration in seconds
 MAX_X = 300

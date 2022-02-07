@@ -339,11 +339,9 @@ class Experiment:
         with open("data/similarity_flows.csv", "w") as similarity_flows_file:
             similarity_flows_file.write("user_type,user_id,other_user_id,transient_similarity\n")
             for user in self.users:
-                max_flow_value = max(user.trust_db.max_flows.values())
                 for to_user_id, similarity_flow in user.trust_db.max_flows.items():
-                    sim_flow = 1 if (to_user_id == user or max_flow_value == 0) else similarity_flow / max_flow_value
                     similarity_flows_file.write(
-                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, sim_flow))
+                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity_flow))
 
     def write_reputations(self):
         # Write the reputation of tags
