@@ -11,7 +11,7 @@ class VotesDatabase:
         self.votes: Set[Vote] = set()
         self.votes_per_user: Dict[int, Set[Vote]] = {}
         self.votes_for_content = {}
-        self.votes_for_tag = {}
+        self.votes_for_tag: Dict[int, Dict[int, Vote]] = {}
 
     def add_vote(self, vote):
         self.votes.add(vote)
@@ -26,8 +26,9 @@ class VotesDatabase:
 
         tag_hash = hash((vote.cid, vote.tag))
         if tag_hash not in self.votes_for_tag:
-            self.votes_for_tag[tag_hash] = []
-        self.votes_for_tag[tag_hash].append(vote)
+            self.votes_for_tag[tag_hash] = {}
+        if vote.user_id not in self.votes_for_tag[tag_hash]:
+            self.votes_for_tag[tag_hash][vote.user_id] = vote
 
     def has_vote(self, vote):
         return vote in self.votes
@@ -49,5 +50,5 @@ class VotesDatabase:
 
     def get_votes_for_tag(self, tag_id) -> List[Vote]:
         if tag_id in self.votes_for_tag:
-            return self.votes_for_tag[tag_id]
+            return list(self.votes_for_tag[tag_id].values())
         return []

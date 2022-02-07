@@ -8,6 +8,7 @@ from core.content import Content
 from core.rule import Rule, RuleType
 from core.tag import Tag
 from core.user import User, UserType
+from core.vote import Vote
 from simulation.scenario import Scenario, ScenarioAction
 from simulation.settings import RuleCoverageDistribution, ContentPopularityDistribution
 
@@ -35,8 +36,8 @@ class Experiment:
         self.tags_reputation_per_round = {}
         self.user_reputation_per_round = {}
 
-        if settings.scenario_file:
-            self.scenario = Scenario(settings.scenario_file)
+        if settings.scenario_dir:
+            self.scenario = Scenario(settings.scenario_dir)
             self.scenario.parse()
 
     def setup_scenario(self):
@@ -51,9 +52,30 @@ class Experiment:
             loop.call_at(action.timestamp, lambda a=action: self.execute_user_action(a))
 
     def execute_user_action(self, action: ScenarioAction):
-        if action.command == "vote":
-            user = self.get_user_by_id(action.user_id)
-            user.vote(action.movie_id, action.tag, action.is_upvote)
+        user = self.get_user_by_id(action.user_id)
+        if action.command == "create":
+            tag = user.create_tag(action.movie_id, action.tag)
+
+            # Other users that are going to vote on this tag do not have the required tag in their database.
+            # The gossip algorithm does not guarantee that users receive it the moment their vote is scheduled.
+            # Therefore, we proactively share it with users that are going to vote on this tag.
+            vote = Vote(hash(user), tag.cid, tag.name, True, tag.authors, tag.rules)
+            for other_action in self.scenario.actions:
+                if other_action.command == "vote" and other_action.movie_id == action.movie_id and other_action.tag == action.tag:
+                    other_user = self.get_user_by_id(other_action.user_id)
+                    #print("Sharing tag %s with %s" % (tag, other_user))
+                    other_user.process_incoming_vote(vote)
+
+            # Also give this tag to the spammers
+            if 2 in self.scenario.users_by_type:
+                for user_id in self.scenario.users_by_type[2]:
+                    other_user = self.get_user_by_id(user_id)
+                    other_user.process_incoming_vote(vote)
+
+        elif action.command == "vote":
+            tag = user.tags_db.get_tag(hash((action.movie_id, action.tag)))
+            assert tag, "Tag (%s, %s) should exist in the database of %s!" % (action.movie_id, action.tag, user)
+            user.vote(tag, action.is_upvote)
 
     def get_user_by_id(self, user_id: int):
         for user in self.users:
@@ -315,14 +337,13 @@ class Experiment:
 
     def write_similarity_flows(self):
         with open("data/similarity_flows.csv", "w") as similarity_flows_file:
-            similarity_flows_file.write("user_type,user_id,other_user_id,similarity_fraction\n")
+            similarity_flows_file.write("user_type,user_id,other_user_id,transient_similarity\n")
             for user in self.users:
-                my_similarity_flow = user.trust_db.max_flows[hash(user)]
-                flow_sums = sum(user.trust_db.max_flows.values()) - my_similarity_flow
+                max_flow_value = max(user.trust_db.max_flows.values())
                 for to_user_id, similarity_flow in user.trust_db.max_flows.items():
-                    frac = 1 if to_user_id == user else similarity_flow / flow_sums
+                    sim_flow = 1 if (to_user_id == user or max_flow_value == 0) else similarity_flow / max_flow_value
                     similarity_flows_file.write(
-                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, frac))
+                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, sim_flow))
 
     def write_reputations(self):
         # Write the reputation of tags
@@ -399,7 +420,7 @@ class Experiment:
                     votes_file.write("%d,%s,%s,%d\n" % (hash(user), vote.cid, vote.tag, 1 if vote.is_accurate else -1))
 
     async def run(self):
-        if self.settings.scenario_file:
+        if self.settings.scenario_dir:
             self.setup_scenario()
         else:
             self.create_content()

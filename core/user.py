@@ -64,32 +64,34 @@ class User:
             self.tags_db.add_tag(tag)
             content_item.add_tag(tag)
 
-        tag.authors.add(vote.user_id)
+        for author in vote.authors:
+            tag.authors.add(author)  # We assume that the tag author information in the vote is reliable
         self.votes_db.add_vote(vote)
 
-    def vote(self, cid: int, tag_name: str, is_accurate: bool) -> None:
+    def create_tag(self, content_id: int, tag_name: str) -> Tag:
+        """
+        Have this user create a particular tag.
+        """
+        content_item = self.content_db.get_content(content_id)
+        if not content_item:
+            # It looks like this content doesn't exist in the user database - create it
+            content_item = Content(str(content_id), 1)
+            self.content_db.add_content(content_item)
+
+        tag = Tag(tag_name, content_id)
+        tag.authors.add(hash(self))
+        self.tags_db.add_tag(tag)
+        content_item.add_tag(tag)
+
+        return tag
+
+    def vote(self, tag: Tag, is_accurate: bool) -> None:
         """
         Vote for a particular tag.
-        :param cid: The identifier of the content that contains the tag being voted on.
-        :param tag_name: The tag string being voted on.
+        :param tag: The tag being voted on.
         :param is_accurate: Whether the vote is positive or negative.
         """
         by_user = hash(self)
-        content_item = self.content_db.get_content(cid)
-        if not content_item:
-            # It looks like this content doesn't exist in the user database - create it
-            content_item = Content(str(cid), 1)
-            self.content_db.add_content(content_item)
-
-        tag = content_item.get_tag_with_name(tag_name)
-        if not tag:
-            # It looks like this tag does not exist yet - create it
-            tag = Tag(tag_name, cid)
-            self.tags_db.add_tag(tag)
-            content_item.add_tag(tag)
-
-        tag.authors.add(by_user)
-
         vote = Vote(by_user, tag.cid, tag.name, is_accurate, tag.authors, tag.rules)
         self.votes_db.add_vote(vote)
 
@@ -145,15 +147,16 @@ class User:
             if not tag_reps:
                 self.trust_db.user_reputations[user_id] = 0
             else:
-                self.trust_db.user_reputations[user_id] = average(tag_reps)
+                print("Avg of tag reputation: %f" % average(tag_reps))
+                self.trust_db.user_reputations[user_id] = (average(tag_reps) + self.trust_db.get_similarity_coefficient(hash(self), user_id)) / 2
 
     def compute_tag_reputation(self, tag: Tag):
         """
         Compute the reputation of a particular tag.
         """
-        #print("Computing reputation of tag %s" % tag)
         rep_fractions = {}
         votes_for_tag = self.votes_db.get_votes_for_tag(hash(tag))
+        print("Computing reputation of tag %s (votes: %d)" % (tag, len(votes_for_tag)))
         for vote in votes_for_tag:
             similarity = self.trust_db.get_similarity_coefficient(hash(self), vote.user_id)
             if -0.2 < similarity < 0.2:
@@ -231,7 +234,8 @@ class User:
                     weight += author_rep
                     count += 1
 
-                tag.weight = (tag.reputation_score + (weight / count)) / 2
+                if count > 0:
+                    tag.weight = (tag.reputation_score + (weight / count)) / 2
 
     def __str__(self):
         user_status = "honest" if self.type == UserType.HONEST else "adversarial"

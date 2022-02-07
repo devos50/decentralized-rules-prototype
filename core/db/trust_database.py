@@ -112,5 +112,5 @@ class TrustDatabase:
 
         # Your own flow is the sum of flows to the other nodes.
         # This ensures that your opinion is weighted in with 50%.
-        self.max_flows[self.my_id] = sum(self.max_flows.values()) if self.max_flows else 1
+        self.max_flows[self.my_id] = max(self.max_flows.values()) if self.max_flows else 1
         print(self.max_flows)
