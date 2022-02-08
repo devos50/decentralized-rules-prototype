@@ -1,6 +1,6 @@
 library(ggplot2)
 
-dat <- read.csv("../../data/similarity_flows.csv")
+dat <- read.csv("../../data/scenario_24_1_10/similarity_flows.csv")
 
 p <- ggplot(dat, aes(x=user_id, y=other_user_id, fill=transient_similarity)) +
      geom_tile() +

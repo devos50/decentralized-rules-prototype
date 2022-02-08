@@ -8,11 +8,14 @@ import shutil
 
 import numpy as np
 
+random.seed(42)
+np.random.seed(42)
+
 BAD_TAG_THRESHOLD = -3
 
 NUM_HONEST_USERS = 24      # Users that create high-quality tags
 NUM_BAD_TAGGER_USERS = 1   # Users that create low-quality tags
-NUM_SPAMMERS = 9           # Users that vote -1 on all tags
+NUM_SPAMMERS = 10           # Users that vote -1 on all tags
 
 NUM_MOVIES = 20
 TAKE_RANDOM_MOVIES = True  # If false, we will take the top X tagged movies
@@ -102,7 +105,8 @@ with open("data/tag_votes.csv") as in_file:
 
 # Determine which movies to include
 if TAKE_RANDOM_MOVIES:
-    movies_to_include = random.sample(list(movie_ids_we_have_tags_for), NUM_MOVIES)
+    movies_to_include = random.sample(sorted(list(movie_ids_we_have_tags_for)), NUM_MOVIES)
+    print(movies_to_include)
 else:
     movies_to_include = popular_movie_ids[:NUM_MOVIES]
 
@@ -177,13 +181,13 @@ for movie_id in movies_to_include:
 for user_id in range(NUM_HONEST_USERS + NUM_BAD_TAGGER_USERS, NUM_HONEST_USERS + NUM_BAD_TAGGER_USERS + NUM_SPAMMERS):
     tags_to_spam = random.sample(all_tags, int(len(all_tags)))
     for movie_id, tag in tags_to_spam:
-        tag_timestamp = random.randint(initial_tag_timestamps[(movie_id, tag)], experiment_end_time)
+        tag_timestamp = experiment_end_time
         tag_actions.append((tag_timestamp, "vote", user_id, movie_id, tag, False))
 
 tag_actions = sorted(tag_actions, key=lambda t: t[0])  # Sort on timestamp
 
 # Write the scenario information
-dir_path = os.path.join("data", "scenarios", "scenario_%d" % NUM_HONEST_USERS)
+dir_path = os.path.join("data", "scenarios", "scenario_%d_%d_%d" % (NUM_HONEST_USERS, NUM_BAD_TAGGER_USERS, NUM_SPAMMERS))
 shutil.rmtree(dir_path, ignore_errors=True)
 os.mkdir(dir_path)
 

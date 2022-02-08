@@ -1,4 +1,6 @@
+import os
 import random
+import shutil
 from asyncio import sleep, get_event_loop, ensure_future
 from typing import Dict, List, Set
 
@@ -42,9 +44,10 @@ class Experiment:
 
     def setup_scenario(self):
         # Create the users
-        for user_ind in self.scenario.unique_users:
-            user = User("%d" % user_ind, user_type=UserType.HONEST)
-            self.users.append(user)
+        for user_type, users in self.scenario.users_by_type.items():
+            for user_ind in users:
+                user = User("%d" % user_ind, user_type=UserType(user_type))
+                self.users.append(user)
 
         # Schedule the scenario actions
         loop = get_event_loop()
@@ -321,10 +324,10 @@ class Experiment:
 
                 G.add_edge(hash(user), to_user_id, weight=similarity, color=edge_color, penwidth=line_thick)
 
-        nx.nx_pydot.write_dot(G, "data/similarities.dot")
+        nx.nx_pydot.write_dot(G, os.path.join("data", self.scenario.scenario_name, "similarities.dot"))
 
     def write_similarities(self):
-        with open("data/similarities.csv", "w") as similarities_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "similarities.csv"), "w") as similarities_file:
             similarities_file.write("user_type,user_id,other_user_id,similarity\n")
             for user in self.users:
                 if hash(user) not in user.trust_db.similarity_scores:
@@ -336,7 +339,7 @@ class Experiment:
                         "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity))
 
     def write_similarity_flows(self):
-        with open("data/similarity_flows.csv", "w") as similarity_flows_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "similarity_flows.csv"), "w") as similarity_flows_file:
             similarity_flows_file.write("user_type,user_id,other_user_id,transient_similarity\n")
             for user in self.users:
                 for to_user_id, similarity_flow in user.trust_db.max_flows.items():
@@ -345,7 +348,7 @@ class Experiment:
 
     def write_reputations(self):
         # Write the reputation of tags
-        with open("data/tag_reputations.csv", "w") as reputations_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "tag_reputations.csv"), "w") as reputations_file:
             reputations_file.write("round,user_id,tag_id,is_accurate,reputation\n")
             for round in self.tags_reputation_per_round:
                 for user_id in self.tags_reputation_per_round[round]:
@@ -358,7 +361,7 @@ class Experiment:
                             "%d,%s,%d,%d,%.3f\n" % (round, user_id, tag_id, 0 if is_inaccurate else 1, self.tags_reputation_per_round[round][user_id][tag_id]))
 
         # Write the reputation of users
-        with open("data/user_reputations.csv", "w") as reputations_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "user_reputations.csv"), "w") as reputations_file:
             reputations_file.write("round,user_type,other_user_type,user_id,other_user_id,reputation\n")
             for round in self.user_reputation_per_round:
                 for user_id in self.user_reputation_per_round[round]:
@@ -371,7 +374,7 @@ class Experiment:
                             "%d,%d,%d,%s,%s,%.3f\n" % (round, user.type.value, other_user.type.value, user_id, other_user_id, self.user_reputation_per_round[round][user_id][other_user_id]))
 
         # Write the reputation of rules
-        with open("data/rules_reputations.csv", "w") as reputations_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "rules_reputations.csv"), "w") as reputations_file:
             reputations_file.write("round,user_id,rule_id,rule_type,reputation\n")
             for round in self.rules_reputation_per_round:
                 for user_id in self.rules_reputation_per_round[round]:
@@ -388,7 +391,7 @@ class Experiment:
         """
         For each user, write all the tags in the database with the appropriate weights.
         """
-        with open("data/tags.csv", "w") as tags_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "tags.csv"), "w") as tags_file:
             tags_file.write("user_id,content_id,tag,is_accurate\n")
             for user in self.users:
                 created_tags = user.tags_db.get_tags_created_by_user(hash(user))
@@ -396,7 +399,7 @@ class Experiment:
                     is_inaccurate = hash(tag) in self.inaccurate_tags
                     tags_file.write("%d,%s,%s,%d\n" % (hash(user), tag.cid, tag.name, 0 if is_inaccurate else 1))
 
-        with open("data/tag_weights.csv", "w") as tags_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "tag_weights.csv"), "w") as tags_file:
             tags_file.write("user_id,content_id,tag,is_accurate,reputation,weight\n")
             for user in self.users:
                 if user.type != UserType.HONEST:
@@ -411,7 +414,7 @@ class Experiment:
         """
         For every user, write their votes.
         """
-        with open("data/votes.csv", "w") as votes_file:
+        with open(os.path.join("data", self.scenario.scenario_name, "votes.csv"), "w") as votes_file:
             votes_file.write("user_id,content_id,tag,vote\n")
             for user in self.users:
                 for vote in user.votes_db.get_votes_for_user(hash(user)):
@@ -461,6 +464,10 @@ class Experiment:
                 self.tags_reputation_per_round[self.round][hash(user)][hash(tag)] = tag.reputation_score
 
     def write_data(self):
+        data_dir_path = os.path.join("data", self.scenario.scenario_name)
+        shutil.rmtree(data_dir_path, ignore_errors=True)
+        os.mkdir(data_dir_path)
+
         self.write_similarity_graph()
         self.write_similarities()
         self.write_similarity_flows()

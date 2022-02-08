@@ -18,6 +18,7 @@ class Scenario:
 
     def __init__(self, scenario_dir):
         self.scenario_dir = scenario_dir
+        self.scenario_name = os.path.basename(self.scenario_dir)
         self.actions: List[ScenarioAction] = []
         self.unique_users = set()
         self.users_by_type = {}

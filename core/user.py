@@ -18,9 +18,10 @@ from core.vote import Vote
 
 class UserType(Enum):
     HONEST = 0
-    RANDOM_VOTES = 1
-    PROMOTE_SPAM_RULES = 2
-    TAG_SPAMMER = 3
+    CREATE_INACCURATE_TAGS = 1
+    RANDOM_VOTES = 2
+    PROMOTE_SPAM_RULES = 3
+    TAG_SPAMMER = 4
 
 
 class User:
