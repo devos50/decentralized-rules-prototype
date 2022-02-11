@@ -4,3 +4,4 @@ __pycache__
 data/**
 .DS_Store
 scripts/r/plots/**
+scripts/create_movielens_experiment/data/

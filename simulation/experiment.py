@@ -307,7 +307,7 @@ class Experiment:
                 print("No information on %s to write similarity graph" % user)
                 continue
 
-            for to_user_id, similarity in user.trust_db.similarity_scores[hash(user)].items():
+            for to_user_id, similarity in user.trust_db.max_flows.items():
                 if to_user_id == hash(user):
                     continue  # Do not add edges to yourself
                 if not G.has_node(to_user_id):
@@ -324,7 +324,7 @@ class Experiment:
 
                 G.add_edge(hash(user), to_user_id, weight=similarity, color=edge_color, penwidth=line_thick)
 
-        nx.nx_pydot.write_dot(G, os.path.join("data", self.scenario.scenario_name, "similarities.dot"))
+        nx.nx_pydot.write_dot(G, os.path.join("data", self.scenario.scenario_name, "similarity_flows.dot"))
 
     def write_similarities(self):
         with open(os.path.join("data", self.scenario.scenario_name, "similarities.csv"), "w") as similarities_file:
