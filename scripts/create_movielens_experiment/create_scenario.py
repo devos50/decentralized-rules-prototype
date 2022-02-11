@@ -15,7 +15,7 @@ BAD_TAG_THRESHOLD = -3
 
 NUM_HONEST_USERS = 24      # Users that create high-quality tags
 NUM_BAD_TAGGER_USERS = 1   # Users that create low-quality tags
-NUM_SPAMMERS = 10           # Users that vote -1 on all tags
+NUM_SPAMMERS = 20           # Users that vote -1 on all tags
 
 NUM_MOVIES = 20
 TAKE_RANDOM_MOVIES = True  # If false, we will take the top X tagged movies

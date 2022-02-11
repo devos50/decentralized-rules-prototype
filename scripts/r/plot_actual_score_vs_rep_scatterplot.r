@@ -6,18 +6,22 @@ dat_honest <- read.csv("../../data/scenario_24_1_0/tag_weights.csv")
 # Average the scores for all users
 dat_honest <- dat_honest %>%
 group_by(content_id, tag) %>%
-summarise(avg_weight = mean(reputation))
+summarise(avg_weight = mean(weight))
 dat_honest <- as.data.frame(dat_honest)
 dat_honest$group = "0"
 
-dat_attack <- read.csv("../../data/scenario_24_1_10/tag_weights.csv")
+print(head(dat_honest, n=20))
+
+dat_attack <- read.csv("../../data/scenario_24_1_20/tag_weights.csv")
 
 # Average the scores for all users
 dat_attack <- dat_attack %>%
 group_by(content_id, tag) %>%
-summarise(avg_weight = mean(reputation))
-dat_attack <- as.data.frame(dat_honest)
+summarise(avg_weight = mean(weight))
+dat_attack <- as.data.frame(dat_attack)
 dat_attack$group = "1"
+
+print(head(dat_attack, n=20))
 
 # Combine...
 dat <- rbind(dat_honest, dat_attack)
@@ -28,12 +32,12 @@ scenario_dat$score <- scenario_dat$upvotes - scenario_dat$downvotes
 colnames(scenario_dat)[1] <- "content_id"
 
 merged_dat <- merge(dat, scenario_dat, by=c("content_id", "tag"))
-print(head(merged_dat))
+#print(head(merged_dat))
 
 # Plot
 p <- ggplot(merged_dat, aes(x=avg_weight, y=score)) +
      geom_point(aes(shape=group, colour=group)) +
-     xlab("Avg. tag reputation") +
+     xlab("Avg. tag weight") +
      ylab("Tag score") +
      xlim(c(-1, 1)) +
      labs(color="Scenario", shape="Scenario") +

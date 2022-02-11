@@ -160,6 +160,9 @@ class User:
         votes_for_tag = self.votes_db.get_votes_for_tag(hash(tag))
         #print("Computing reputation of tag %s (votes: %d)" % (tag, len(votes_for_tag)))
         for vote in votes_for_tag:
+            if vote.user_id not in self.trust_db.max_flows:
+                continue
+
             transient_similarity = self.trust_db.max_flows[vote.user_id]
             if -0.2 < transient_similarity < 0.2:
                 continue

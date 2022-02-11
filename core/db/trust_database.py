@@ -126,8 +126,8 @@ class TrustDatabase:
             else:
                 self.max_flows[user_id] = 2 * ((f - min_flow) / (max_flow - min_flow)) - 1
 
-        print(self.similarity_scores[self.my_id])
-        print(self.max_flows)
+        #print(self.similarity_scores[self.my_id])
+        #print(self.max_flows)
 
     def compute_sign_aware_flow(self, orig_graph, s, t):
         flow = 0
