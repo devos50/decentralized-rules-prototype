@@ -48,7 +48,7 @@ class Scenario:
             next(csv_reader)  # Skip header
             for row in csv_reader:
                 user_id = int(row[0])
-                user_type = int(row[1])
+                user_type = row[1]
                 if user_type not in self.users_by_type:
                     self.users_by_type[user_type] = []
                 self.users_by_type[user_type].append(user_id)

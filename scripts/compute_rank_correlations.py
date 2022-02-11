@@ -1,13 +1,16 @@
 """
-Compute the Spearson Rank Correlation between two scenarios.
+Compute the Spearson Rank Correlation between multiple scenarios.
+Requires a clean base scenario without attacks.
 """
 import csv
 import os
 
 from scipy import stats
 
-no_attack_scenario_dir = "../data/scenario_24_1_0"
-attack_scenario_dir = "../data/scenario_24_1_20"
+
+no_attack_scenario_dir = "../data/scenario_19_1"
+attack_scenario_dirs = [("downvote", "../data/scenario_19_1_20_naive_downvote"),
+                        ("randvote", "../data/scenario_19_1_20_naive_randvote")]
 
 
 def read_tags(scenario_base_path):
@@ -34,35 +37,35 @@ def read_tags(scenario_base_path):
     return tags
 
 
-tags_no_attack = read_tags(no_attack_scenario_dir)
-tags_attack = read_tags(attack_scenario_dir)
-
-
 with open("../data/spearman_correlations.csv", "w") as out_file:
-    out_file.write("user_id,content_id,correlation\n")
-    for user in tags_no_attack:
-        if user not in tags_attack:
-            continue
+    out_file.write("scenario,user_id,content_id,correlation\n")
+    tags_no_attack = read_tags(no_attack_scenario_dir)
+    for attack_name, attack_scenario_dir in attack_scenario_dirs:
+        tags_attack = read_tags(attack_scenario_dir)
 
-        for content_id in tags_no_attack[user]:
-            if content_id not in tags_attack[user]:
+        for user in tags_no_attack:
+            if user not in tags_attack:
                 continue
 
-            t_a = tags_no_attack[user][content_id]
-            t_na = tags_attack[user][content_id]
+            for content_id in tags_no_attack[user]:
+                if content_id not in tags_attack[user]:
+                    continue
 
-            # Determine intersection
-            res1 = [ele1 for ele1 in t_a for ele2 in t_na if ele1[0] == ele2[0]]
-            res2 = [ele1 for ele1 in t_na for ele2 in t_a if ele1[0] == ele2[0]]
-            if len(res1) < 5:
-                continue
+                t_a = tags_no_attack[user][content_id]
+                t_na = tags_attack[user][content_id]
 
-            w1 = [tag[0] for tag in res1]
-            w2 = [tag[0] for tag in res2]
+                # Determine intersection
+                res1 = [ele1 for ele1 in t_a for ele2 in t_na if ele1[0] == ele2[0]]
+                res2 = [ele1 for ele1 in t_na for ele2 in t_a if ele1[0] == ele2[0]]
+                if len(res1) < 5:
+                    continue
 
-            ranks1 = list(range(0, len(w1)))
-            ranks2 = [w1.index(ele) for ele in w2]
+                w1 = [tag[0] for tag in res1]
+                w2 = [tag[0] for tag in res2]
 
-            correlation = stats.spearmanr(ranks1, ranks2)
+                ranks1 = list(range(0, len(w1)))
+                ranks2 = [w1.index(ele) for ele in w2]
 
-            out_file.write("%d,%s,%f\n" % (user, content_id, correlation[0]))
+                correlation = stats.spearmanr(ranks1, ranks2)
+
+                out_file.write("%s,%d,%s,%f\n" % (attack_name, user, content_id, correlation[0]))

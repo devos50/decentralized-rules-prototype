@@ -16,8 +16,8 @@ class ContentPopularityDistribution(Enum):
 
 @dataclass
 class ExperimentSettings:
-    duration = 1800  # Experiment duration in seconds
-    scenario_dir = "scripts/create_movielens_experiment/data/scenarios/scenario_24_1_10"
+    duration = 3600  # Experiment duration in seconds
+    scenario_dir = None
 
     # Gossip parameters
     exchange_interval = 5
@@ -38,13 +38,7 @@ class ExperimentSettings:
     # User parameters
     num_users = {
         # Honest user - attempts to vote faithfully.
-        UserType.HONEST: 2,
-        # Adversary that randomly votes on tags.
-        UserType.RANDOM_VOTES: 0,
-        # Adversary that creates a spam rule with one identity and promotes it while gaining goodwill by voting accurately for other tags.
-        UserType.PROMOTE_SPAM_RULES: 0,
-        # Adversary that creates inaccurate tags.
-        UserType.TAG_SPAMMER: 0
+        UserType.HONEST: 0
     }
     initial_user_engagement = 1
     initial_tags_created_per_user = 0  # TODO should follow a power-law

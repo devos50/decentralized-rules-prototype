@@ -17,11 +17,10 @@ from core.vote import Vote
 
 
 class UserType(Enum):
-    HONEST = 0
-    CREATE_INACCURATE_TAGS = 1
-    RANDOM_VOTES = 2
-    PROMOTE_SPAM_RULES = 3
-    TAG_SPAMMER = 4
+    HONEST = "honest"
+    CREATE_INACCURATE_TAGS = "bad_tagger"
+    NAIVE_NEGATIVE_VOTER = "naive_downvote"
+    NAIVE_RANDOM_VOTER = "naive_randvote"
 
 
 class User:
@@ -235,8 +234,7 @@ class User:
                     tag.weight = (tag.reputation_score + (weight / count)) / 2
 
     def __str__(self):
-        user_status = "honest" if self.type == UserType.HONEST else "adversarial"
-        return "User %s (%s)" % (hash(self), user_status)
+        return "User %s (%s)" % (hash(self), self.type.value)
 
     def __hash__(self):
         return int(self.identifier)

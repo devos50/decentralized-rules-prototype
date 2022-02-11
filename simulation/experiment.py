@@ -336,7 +336,7 @@ class Experiment:
 
                 for to_user_id, similarity in user.trust_db.similarity_scores[hash(user)].items():
                     similarities_file.write(
-                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity))
+                        "%s,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity))
 
     def write_similarity_flows(self):
         with open(os.path.join("data", self.scenario.scenario_name, "similarity_flows.csv"), "w") as similarity_flows_file:
@@ -344,7 +344,7 @@ class Experiment:
             for user in self.users:
                 for to_user_id, similarity_flow in user.trust_db.max_flows.items():
                     similarity_flows_file.write(
-                        "%d,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity_flow))
+                        "%s,%s,%s,%.3f\n" % (user.type.value, hash(user), to_user_id, similarity_flow))
 
     def write_reputations(self):
         # Write the reputation of tags
@@ -371,7 +371,7 @@ class Experiment:
                     for other_user_id in self.user_reputation_per_round[round][user_id]:
                         other_user = self.get_user_by_id(other_user_id)
                         reputations_file.write(
-                            "%d,%d,%d,%s,%s,%.3f\n" % (round, user.type.value, other_user.type.value, user_id, other_user_id, self.user_reputation_per_round[round][user_id][other_user_id]))
+                            "%d,%s,%s,%s,%s,%.3f\n" % (round, user.type.value, other_user.type.value, user_id, other_user_id, self.user_reputation_per_round[round][user_id][other_user_id]))
 
         # Write the reputation of rules
         with open(os.path.join("data", self.scenario.scenario_name, "rules_reputations.csv"), "w") as reputations_file:
