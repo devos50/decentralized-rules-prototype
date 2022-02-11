@@ -57,7 +57,7 @@ with open("../data/spearman_correlations.csv", "w") as out_file:
                 # Determine intersection
                 res1 = [ele1 for ele1 in t_a for ele2 in t_na if ele1[0] == ele2[0]]
                 res2 = [ele1 for ele1 in t_na for ele2 in t_a if ele1[0] == ele2[0]]
-                if len(res1) < 5:
+                if len(res1) < 3:
                     continue
 
                 w1 = [tag[0] for tag in res1]
