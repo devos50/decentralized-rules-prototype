@@ -2,13 +2,14 @@ import csv
 import os
 import random
 import shutil
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import numpy as np
 
 from scripts.create_movielens_experiment.generate_scenario import BAD_TAG_THRESHOLD, MU, SIGMA, MAX_X
 from scripts.create_movielens_experiment.generate_scenario.action import ScenarioAction
 from scripts.create_movielens_experiment.generate_scenario.scenario_settings import ScenarioSettings
+from scripts.create_movielens_experiment.generate_scenario.tag import Tag
 
 
 class Scenario:
@@ -25,6 +26,7 @@ class Scenario:
         self.total_users = settings.num_honest_users + settings.num_bad_taggers
         self.tags_included_in_experiment = []
         self.movies_to_include = []
+        self.tags_info: Dict[Tuple[str, str], Tag] = {}
 
         self.users_by_type = {
             "honest": list(range(settings.num_honest_users)),
@@ -124,7 +126,6 @@ class Scenario:
         print("Experiment end time: %d" % self.experiment_end_time)
 
         # We now know which movies to include - create the scenario
-
         for movie_id in self.movies_to_include:
             for tag, voting_info in self.votes_per_movie[movie_id].items():
                 num_upvotes, num_downvotes = voting_info
@@ -153,9 +154,11 @@ class Scenario:
                             user_id = self.get_user_that_tagged(movie_id, tag, get_uniform_random=True)
 
                         self.tags_included_in_experiment.append((movie_id, tag, user_id, num_upvotes, num_downvotes))
+                        self.tags_info[(movie_id, tag)] = Tag(movie_id, tag, user_id, set(), set())
                     else:
                         tag_timestamp = random.randint(self.initial_tag_timestamps[(movie_id, tag)], self.experiment_end_time)
                         user_id = self.get_user_that_tagged(movie_id, tag)
+                        self.tags_info[(movie_id, tag)].upvotes.add(user_id)
 
                     action = ScenarioAction("create" if (ind == 0) else "vote", tag_timestamp, user_id, movie_id, tag, True)
                     self.actions.append(action)
@@ -166,9 +169,10 @@ class Scenario:
                 for ind in range(num_downvotes):
                     user_id = self.get_user_that_tagged(movie_id, tag)
                     tag_timestamp = random.randint(lowest_timestamp_for_create_tag, self.experiment_end_time)
-                    action = ScenarioAction("create" if (ind == 0) else "vote", tag_timestamp, user_id, movie_id, tag, False)
+                    action = ScenarioAction("vote", tag_timestamp, user_id, movie_id, tag, False)
                     self.actions.append(action)
                     self.set_user_tagged(user_id, movie_id, tag)
+                    self.tags_info[(movie_id, tag)].downvotes.add(user_id)
 
     def get_included_tags(self) -> List[Tuple[int, str]]:
         return [(tup[0], tup[1]) for tup in self.tags_included_in_experiment]

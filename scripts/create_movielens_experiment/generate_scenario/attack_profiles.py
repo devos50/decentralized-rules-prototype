@@ -1,7 +1,14 @@
 import random
+from enum import Enum
 
 from scripts.create_movielens_experiment.generate_scenario.action import ScenarioAction
 from scripts.create_movielens_experiment.generate_scenario.scenario import Scenario
+
+
+class VoteType(Enum):
+    UPVOTE = 0
+    DOWNVOTE = 1
+    RANDOM = 2
 
 
 class AttackProfile:
@@ -23,12 +30,15 @@ class AttackProfile:
         return user_id
 
 
-class NaiveDownvoteAttackProfile(AttackProfile):
-    identifier = "naive_downvote"
+class NaiveVoteAttackProfile(AttackProfile):
+    identifier = "naive_vote"
 
-    def __init__(self, scope: float = 1):
+    def __init__(self, scope: float = 1, vote_type: VoteType = VoteType.DOWNVOTE):
         super().__init__()
         self.scope = scope
+        self.vote_type = vote_type
+        self.identifier = "naive_downvote" if vote_type == VoteType.DOWNVOTE else \
+            "naive_upvote" if vote_type == VoteType.UPVOTE else "naive_randvote"
 
     def apply(self, scenario: Scenario) -> None:
         included_tags = scenario.get_included_tags()
@@ -36,21 +46,38 @@ class NaiveDownvoteAttackProfile(AttackProfile):
         tags_to_spam = random.sample(included_tags, int(len(included_tags) * self.scope))
         for movie_id, tag in tags_to_spam:
             tag_timestamp = scenario.experiment_end_time
-            scenario.actions.append(ScenarioAction("vote", tag_timestamp, user_id, movie_id, tag, False))
+
+            vote = None
+            if self.vote_type == VoteType.DOWNVOTE:
+                vote = False
+            elif self.vote_type == VoteType.UPVOTE:
+                vote = True
+            elif self.vote_type == VoteType.RANDOM:
+                vote = random.random() < 0.5
+
+            scenario.actions.append(ScenarioAction("vote", tag_timestamp, user_id, movie_id, tag, vote))
 
 
-class NaiveRandomVoteAttackProfile(AttackProfile):
-    identifier = "naive_randvote"
+class LowerReputationAttackProfile(AttackProfile):
+    identifier = "lower_reputation"
 
-    def __init__(self, scope: float = 1):
+    def __init__(self, target_user: int = 0):
         super().__init__()
-        self.scope = scope
+        self.target_user = target_user
 
     def apply(self, scenario: Scenario) -> None:
-        included_tags = scenario.get_included_tags()
         user_id = self.create_new_user_in_scenario(scenario)
-        tags_to_spam = random.sample(included_tags, int(len(included_tags) * self.scope))
-        for movie_id, tag in tags_to_spam:
-            tag_timestamp = scenario.experiment_end_time
-            is_upvote = random.random() < 0.5
-            scenario.actions.append(ScenarioAction("vote", tag_timestamp, user_id, movie_id, tag, is_upvote))
+        for tag in scenario.tags_info.values():
+            vote = None
+            if tag.author == self.target_user:
+                vote = False
+            elif self.target_user in tag.upvotes:
+                vote = False
+            elif self.target_user in tag.downvotes:
+                vote = True
+
+            if not vote:
+                # Simply vote what the majority voted
+                vote = len(tag.upvotes) > len(tag.downvotes)
+
+            scenario.actions.append(ScenarioAction("vote", scenario.experiment_end_time, user_id, tag.movie_id, tag.tag, vote))

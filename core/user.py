@@ -21,6 +21,7 @@ class UserType(Enum):
     CREATE_INACCURATE_TAGS = "bad_tagger"
     NAIVE_NEGATIVE_VOTER = "naive_downvote"
     NAIVE_RANDOM_VOTER = "naive_randvote"
+    LOWER_REPUTATION = "lower_reputation"
 
 
 class User:
