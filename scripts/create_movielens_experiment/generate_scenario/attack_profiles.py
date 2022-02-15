@@ -59,6 +59,12 @@ class NaiveVoteAttackProfile(AttackProfile):
 
 
 class LowerReputationAttackProfile(AttackProfile):
+    """
+    With this attack, a user attempts to lower the reputation of another peer. It does so by:
+    - Downvoting tags created by the target user.
+    - Vote the opposite of what the target user voted on a particular tag.
+    - if the target user is unrelated to a tag, the attacker follows the majority vote on a tag.
+    """
     identifier = "lower_reputation"
 
     def __init__(self, target_user: int = 0):
@@ -76,8 +82,9 @@ class LowerReputationAttackProfile(AttackProfile):
             elif self.target_user in tag.downvotes:
                 vote = True
 
-            if not vote:
+            if vote is None and tag.upvotes != tag.downvotes:
                 # Simply vote what the majority voted
                 vote = len(tag.upvotes) > len(tag.downvotes)
 
-            scenario.actions.append(ScenarioAction("vote", scenario.experiment_end_time, user_id, tag.movie_id, tag.tag, vote))
+            if vote is not None:
+                scenario.actions.append(ScenarioAction("vote", scenario.experiment_end_time, user_id, tag.movie_id, tag.tag, vote))

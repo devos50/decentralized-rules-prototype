@@ -9,8 +9,7 @@ from scipy import stats
 
 
 no_attack_scenario_dir = "../data/scenario_19_1"
-attack_scenario_dirs = [("downvote", "../data/scenario_19_1_20_naive_downvote"),
-                        ("randvote", "../data/scenario_19_1_20_naive_randvote")]
+attack_scenario_dirs = [("lower_reputation", "../data/scenario_19_1_1_lower_reputation")]
 
 
 def read_tags(scenario_base_path):

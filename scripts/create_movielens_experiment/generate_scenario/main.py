@@ -20,8 +20,8 @@ if __name__ == "__main__":
 
     scenario = Scenario(settings)
     scenario.generate()
-    for ind in range(10):
-        scenario.add_attack(LowerReputationAttackProfile(target_user=ind))
+    for ind in range(5):
+        scenario.add_attack(LowerReputationAttackProfile(target_user=0))
     # for _ in range(20):
     #     scenario.add_attack(NaiveDownvoteAttackProfile(scope=0.1))
     scenario.write()
