@@ -93,7 +93,8 @@ class User:
         :param is_accurate: Whether the vote is positive or negative.
         """
         by_user = hash(self)
-        vote = Vote(by_user, tag.cid, tag.name, is_accurate, tag.authors, tag.rules)
+        linked_votes = self.trust_db.select_vote_dag_tips()
+        vote = Vote(by_user, tag.cid, tag.name, is_accurate, tag.authors, tag.rules, linked_votes)
         self.votes_db.add_vote(vote)
 
     def apply_rules_to_content(self):

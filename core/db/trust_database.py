@@ -1,3 +1,6 @@
+import random
+from typing import Set
+
 import networkx as nx
 from numpy import average
 
@@ -11,6 +14,10 @@ class TrustDatabase:
         self.user_reputations = {}
         self.votes_db = votes_db
         self.tags_db = tags_db
+
+    def select_vote_dag_tips(self) -> Set[int]:
+        tips = [node for node, in_degree in self.votes_db.vote_dag.in_degree if in_degree == 0]
+        return set(random.sample(tips, min(len(tips), 2)))
 
     def compute_similarities(self):
         """

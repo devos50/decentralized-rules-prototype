@@ -62,7 +62,8 @@ class Experiment:
             # Other users that are going to vote on this tag do not have the required tag in their database.
             # The gossip algorithm does not guarantee that users receive it the moment their vote is scheduled.
             # Therefore, we proactively share it with users that are going to vote on this tag.
-            vote = Vote(hash(user), tag.cid, tag.name, True, tag.authors, tag.rules)
+            linked_votes = user.trust_db.select_vote_dag_tips()
+            vote = Vote(hash(user), tag.cid, tag.name, True, tag.authors, tag.rules, linked_votes)
             for other_action in self.scenario.actions:
                 if other_action.command == "vote" and other_action.movie_id == action.movie_id and other_action.tag == action.tag:
                     other_user = self.get_user_by_id(other_action.user_id)
@@ -420,6 +421,10 @@ class Experiment:
                 for vote in user.votes_db.get_votes_for_user(hash(user)):
                     votes_file.write("%d,%s,%s,%d\n" % (hash(user), vote.cid, vote.tag, 1 if vote.is_accurate else -1))
 
+    def write_vote_dag(self):
+        user = self.get_user_by_id(0)
+        nx.nx_pydot.write_dot(user.votes_db.vote_dag, os.path.join("data", "vote_dag.dot"))
+
     async def run(self):
         if self.settings.scenario_dir:
             self.setup_scenario()
@@ -474,3 +479,4 @@ class Experiment:
         self.write_reputations()
         self.write_tags()
         self.write_votes()
+        self.write_vote_dag()
