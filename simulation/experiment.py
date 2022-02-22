@@ -6,6 +6,7 @@ from typing import Dict, List, Set
 
 import networkx as nx
 
+from core import GENESIS_HASH
 from core.content import Content
 from core.rule import Rule, RuleType
 from core.tag import Tag
@@ -423,6 +424,17 @@ class Experiment:
 
     def write_vote_dag(self):
         user = self.get_user_by_id(0)
+        user.votes_db.vote_dag.nodes[GENESIS_HASH]["color"] = "green"
+        for node in user.votes_db.vote_dag.nodes:
+            if node == GENESIS_HASH:
+                continue
+            vote = user.votes_db.votes[node]
+            user_vote = self.get_user_by_id(vote.user_id)
+            user.votes_db.vote_dag.nodes[node]["label"] = user_vote.identifier
+
+            if user_vote.type != UserType.HONEST:
+                user.votes_db.vote_dag.nodes[node]["color"] = "red"
+
         nx.nx_pydot.write_dot(user.votes_db.vote_dag, os.path.join("data", "vote_dag.dot"))
 
     async def run(self):
