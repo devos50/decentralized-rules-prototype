@@ -2,7 +2,10 @@ import random
 from typing import Set
 
 import networkx as nx
+import numpy as np
 from numpy import average
+
+from core import GENESIS_HASH
 
 
 class TrustDatabase:
@@ -15,9 +18,39 @@ class TrustDatabase:
         self.votes_db = votes_db
         self.tags_db = tags_db
 
+        self.pagerank_scores = {}
+
     def select_vote_dag_tips(self) -> Set[int]:
-        tips = [node for node, in_degree in self.votes_db.vote_dag.in_degree if in_degree == 0]
-        return set(random.sample(tips, min(len(tips), 2)))
+        """
+        Determine the tips on which we build our next vote.
+        """
+        # Copy the DAG and reverse the edges
+        walk_dag = nx.DiGraph()
+        walk_dag.add_node(GENESIS_HASH)
+        for from_edge, to_edge in self.votes_db.vote_dag.edges():
+            from_vote = self.votes_db.votes[from_edge]
+            user_rep = self.user_reputations[from_vote.user_id] if from_vote.user_id in self.user_reputations else 0
+            if user_rep > 0:
+                walk_dag.add_edge(to_edge, from_edge, weight=user_rep)
+
+        self.pagerank_scores = nx.pagerank_numpy(walk_dag, personalization={GENESIS_HASH: 1}, alpha=1)
+
+        ssum = 0
+        node_ids = []
+        exit_probs = []
+        tips = [node for node, out_degree in walk_dag.out_degree if out_degree == 0]
+        for tip in tips:
+            if self.pagerank_scores[tip] <= 0:
+                continue
+            ssum += self.pagerank_scores[tip]
+            node_ids.append(tip)
+            exit_probs.append(self.pagerank_scores[tip])
+
+        # Normalize the exit probabilities in the tips
+        for ind in range(len(exit_probs)):
+            exit_probs[ind] /= ssum
+
+        return np.random.choice(node_ids, min(len(exit_probs), 2), p=exit_probs)
 
     def compute_similarities(self):
         """
@@ -104,6 +137,7 @@ class TrustDatabase:
         # Construct the flow graph
         other_user_ids = set()
         flow_graph = nx.Graph()
+        flow_graph.add_node(self.my_id)
         for from_user_id in self.similarity_scores.keys():
             for to_user_id, score in self.similarity_scores[from_user_id].items():
                 if from_user_id == self.my_id and to_user_id == self.my_id:
@@ -177,3 +211,20 @@ class TrustDatabase:
                 flow += df
 
         return flow
+
+    def compute_graph_influences(self):
+        sums_per_user = {}
+        for vote_id in self.pagerank_scores.keys():
+            if vote_id == GENESIS_HASH:
+                continue
+            vote = self.votes_db.votes[vote_id]
+            if vote.user_id not in sums_per_user:
+                sums_per_user[vote.user_id] = 0
+            sums_per_user[vote.user_id] += self.pagerank_scores[vote_id]
+
+        # Normalize scores
+        ssum = sum(sums_per_user.values())
+        for user_id in sums_per_user.keys():
+            sums_per_user[user_id] /= ssum
+
+        print(sums_per_user)

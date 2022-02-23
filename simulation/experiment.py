@@ -425,6 +425,7 @@ class Experiment:
     def write_vote_dag(self):
         user = self.get_user_by_id(0)
         user.votes_db.vote_dag.nodes[GENESIS_HASH]["color"] = "green"
+        user.votes_db.vote_dag.nodes[GENESIS_HASH]["label"] = "gen"
         for node in user.votes_db.vote_dag.nodes:
             if node == GENESIS_HASH:
                 continue
@@ -466,7 +467,9 @@ class Experiment:
         self.user_reputation_per_round[self.round] = {}
         self.tags_reputation_per_round[self.round] = {}
         for user in self.users:
+            print("Recomputing all reputations for %s" % user)
             user.recompute_reputations()
+            user.trust_db.compute_graph_influences()
             self.rules_reputation_per_round[self.round][hash(user)] = {}
             self.user_reputation_per_round[self.round][hash(user)] = {}
             self.tags_reputation_per_round[self.round][hash(user)] = {}
