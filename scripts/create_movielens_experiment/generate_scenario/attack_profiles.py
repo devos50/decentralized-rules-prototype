@@ -41,6 +41,23 @@ class NaiveVoteAttackProfile(AttackProfile):
             "naive_upvote" if vote_type == VoteType.UPVOTE else "naive_randvote"
 
     def apply(self, scenario: Scenario) -> None:
+        self.create_new_user_in_scenario(scenario)
+
+
+class FixedNaiveVoteAttackProfile(AttackProfile):
+    """
+    With this attack profile, the votes cast by the adversary are embedded in the scenario file.
+    """
+    identifier = "fixed_naive_vote"
+
+    def __init__(self, scope: float = 1, vote_type: VoteType = VoteType.DOWNVOTE):
+        super().__init__()
+        self.scope = scope
+        self.vote_type = vote_type
+        self.identifier = "fixed_naive_downvote" if vote_type == VoteType.DOWNVOTE else \
+            "fixed_naive_upvote" if vote_type == VoteType.UPVOTE else "fixed_naive_randvote"
+
+    def apply(self, scenario: Scenario) -> None:
         included_tags = scenario.get_included_tags()
         user_id = self.create_new_user_in_scenario(scenario)
         tags_to_spam = random.sample(included_tags, int(len(included_tags) * self.scope))

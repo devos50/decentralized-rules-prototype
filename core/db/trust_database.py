@@ -217,6 +217,10 @@ class TrustDatabase:
         for vote_id in self.pagerank_scores.keys():
             if vote_id == GENESIS_HASH:
                 continue
+
+            if vote_id not in self.votes_db.votes:
+                continue
+
             vote = self.votes_db.votes[vote_id]
             if vote.user_id not in sums_per_user:
                 sums_per_user[vote.user_id] = 0

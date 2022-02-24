@@ -12,7 +12,7 @@ if __name__ == "__main__":
     set_event_loop(loop)
 
     experiment_settings = ExperimentSettings()
-    experiment_settings.scenario_dir = "scripts/create_movielens_experiment/data/scenarios/scenario_19_1_1_naive_downvote"
+    experiment_settings.scenario_dir = "scripts/create_movielens_experiment/data/scenarios/scenario_9_1_1_naive_randvote"
     exp = Experiment(experiment_settings)
     ensure_future(exp.run())
     loop.run_forever()

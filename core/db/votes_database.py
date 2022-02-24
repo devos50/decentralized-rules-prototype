@@ -1,5 +1,5 @@
 import random
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 
 import networkx as nx
 
@@ -50,8 +50,18 @@ class VotesDatabase:
 
             self.add_vote(vote)
 
-    def get_random_votes(self, limit: int = 10) -> List[Vote]:
-        return random.sample(list(self.votes.values()), min(len(self.votes), limit))
+    def get_random_votes(self, limit: int = 10, exclude: Optional[int] = None) -> List[Vote]:
+        """
+        Sample random votes from the database.
+        :param limit: The maximum number of votes to sample.
+        :param exclude: Whether to exclude the votes of a particular user.
+        :return: A list of sampled votes.
+        """
+        if exclude:
+            eligible_votes = [vote for vote in self.votes.values() if vote.user_id != exclude]
+        else:
+            eligible_votes = list(self.votes.values())
+        return random.sample(eligible_votes, min(len(eligible_votes), limit))
 
     def get_votes_for_user(self, user_id):
         if user_id in self.votes_per_user:
@@ -62,3 +72,11 @@ class VotesDatabase:
         if tag_id in self.votes_for_tag:
             return list(self.votes_for_tag[tag_id].values())
         return []
+
+    def user_did_vote_for_tag(self, user_id, cid, tag) -> bool:
+        if user_id not in self.votes_per_user:
+            return False
+        for vote in self.votes_per_user[user_id]:
+            if vote.cid == cid and vote.tag == tag:
+                return True
+        return False

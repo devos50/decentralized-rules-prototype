@@ -1,12 +1,10 @@
 import random
 from asyncio import sleep
 from enum import Enum
-from typing import Optional, List
+from typing import List
 
-import networkx as nx
 from numpy import average
 
-from core import GENESIS_HASH
 from core.content import Content
 from core.db.content_database import ContentDatabase
 from core.db.peers_database import PeersDatabase
@@ -14,6 +12,7 @@ from core.db.rules_database import RulesDatabase
 from core.db.tags_database import TagsDatabase
 from core.db.trust_database import TrustDatabase
 from core.db.votes_database import VotesDatabase
+from core.exchange import RandomExchangePolicy
 from core.tag import Tag
 from core.vote import Vote
 
@@ -22,7 +21,11 @@ class UserType(Enum):
     HONEST = "honest"
     CREATE_INACCURATE_TAGS = "bad_tagger"
     NAIVE_NEGATIVE_VOTER = "naive_downvote"
+    NAIVE_POSITIVE_VOTER = "naive_upvote"
     NAIVE_RANDOM_VOTER = "naive_randvote"
+    FIXED_NAIVE_NEGATIVE_VOTER = "fixed_naive_downvote"
+    FIXED_NAIVE_POSITIVE_VOTER = "fixed_naive_upvote"
+    FIXED_NAIVE_RANDOM_VOTER = "fixed_naive_randvote"
     LOWER_REPUTATION = "lower_reputation"
 
 
@@ -38,6 +41,7 @@ class User:
         self.trust_db = TrustDatabase(hash(self), self.votes_db, self.tags_db)
         self.neighbours: List[User] = []
         self.type = user_type
+        self.vote_exchange_policy = RandomExchangePolicy(self.votes_db)
 
     def connect(self, other_user):
         self.neighbours.append(other_user)
@@ -47,7 +51,7 @@ class User:
         while True:
             # Exchange random votes with one neighbour
             neighbour = random.choice(self.neighbours)
-            votes = self.votes_db.get_random_votes(limit=gossip_batch_size)
+            votes = self.vote_exchange_policy.get_votes(hash(neighbour))
             #print("%s exchanging %d vote(s) with %s" % (self, len(votes), neighbour))
             for vote in votes:
                 neighbour.process_incoming_vote(vote)
@@ -70,6 +74,18 @@ class User:
         for author in vote.authors:
             tag.authors.add(author)  # We assume that the tag author information in the vote is reliable
         self.votes_db.add_vote(vote)
+
+        if self.type == UserType.NAIVE_POSITIVE_VOTER or self.type == UserType.NAIVE_NEGATIVE_VOTER or self.type == UserType.NAIVE_RANDOM_VOTER:
+            # We have received a vote from another user - respond to it if we are a naive vote attacker.
+            if not self.votes_db.user_did_vote_for_tag(hash(self), vote.cid, vote.tag):
+                if self.type == UserType.NAIVE_NEGATIVE_VOTER:
+                    to_vote = False
+                elif self.type == UserType.NAIVE_POSITIVE_VOTER:
+                    to_vote = True
+                else:
+                    to_vote = random.random() < 0.5
+
+                self.vote(tag, to_vote)
 
     def create_tag(self, content_id: int, tag_name: str) -> Tag:
         """
