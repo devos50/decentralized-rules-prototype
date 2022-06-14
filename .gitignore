@@ -5,3 +5,4 @@ data/**
 .DS_Store
 scripts/r/plots/**
 scripts/create_movielens_experiment/data/
+scripts/create_tribler_dataset/data/
