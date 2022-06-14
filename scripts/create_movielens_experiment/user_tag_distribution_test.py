@@ -1,4 +1,6 @@
-# Playing around with discrete log-normal distributions
+"""
+Assign tags
+"""
 from collections import defaultdict
 
 import numpy as np

@@ -14,7 +14,6 @@ with open(TAG_VOTES_FILE) as tag_votes_file:
     csv_reader = csv.reader(tag_votes_file)
     next(csv_reader)  # Ignore the header
     for row in csv_reader:
-        print(row)
         total_upvotes += int(row[2])
         total_downvotes += int(row[3])
         score = int(row[2]) - int(row[3])
@@ -23,7 +22,7 @@ with open(TAG_VOTES_FILE) as tag_votes_file:
         elif score < 0:
             tags_negative_score += 1
 
-print(total_upvotes)
-print(total_downvotes)
-print(tags_positive_score)
-print(tags_negative_score)
+print("Total upvotes: %d" % total_upvotes)
+print("Total downvotes: %d" % total_downvotes)
+print("# Tags with positive score: %d" % tags_positive_score)
+print("# Tags with negative score: %d" % tags_negative_score)
