@@ -11,8 +11,7 @@ if __name__ == "__main__":
     loop = DiscreteLoop()
     set_event_loop(loop)
 
-    experiment_settings = ExperimentSettings()
-    experiment_settings.scenario_dir = "scripts/create_movielens_experiment/data/scenarios/scenario_9_1_1_naive_randvote"
+    experiment_settings = ExperimentSettings(torrent_names_file_path="scripts/create_tribler_experiment/data/torrents_1000.txt")
     exp = Experiment(experiment_settings)
     ensure_future(exp.run())
     loop.run_forever()
