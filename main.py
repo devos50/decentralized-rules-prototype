@@ -11,7 +11,7 @@ if __name__ == "__main__":
     loop = DiscreteLoop()
     set_event_loop(loop)
 
-    experiment_settings = ExperimentSettings(torrent_names_file_path="scripts/create_tribler_experiment/data/torrents_1000.txt")
+    experiment_settings = ExperimentSettings(data_dir="scripts/create_tribler_experiment/data")
     exp = Experiment(experiment_settings)
     ensure_future(exp.run())
     loop.run_forever()

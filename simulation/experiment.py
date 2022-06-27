@@ -1,8 +1,10 @@
 import json
+import os
 import random
 from asyncio import sleep, get_event_loop, ensure_future
 from typing import List
 
+import networkx as nx
 from networkx.readwrite import json_graph
 
 from core.content import Content
@@ -38,7 +40,7 @@ class Experiment:
         """
         Read content from the torrent filenames database.
         """
-        with open(self.settings.torrent_names_file_path, "rb") as torrent_names_file:
+        with open(os.path.join(self.settings.data_dir, "torrents_1000.txt"), "rb") as torrent_names_file:
             for line in torrent_names_file.readlines():
                 self.content.append(Content(line.strip()))
 
@@ -70,6 +72,22 @@ class Experiment:
             user.apply_rules()
         print("All user applied all rules")
 
+    async def periodically_write_graph_stats(self):
+        while True:
+            event_loop = get_event_loop()
+            with open(os.path.join(self.settings.data_dir, "graph_size.csv"), "a") as out_file:
+                for user_ind, user in enumerate(self.users):
+                    num_edges = len(user.knowledge_graph.graph.edges)
+                    num_nodes = len(user.knowledge_graph.graph.nodes)
+                    out_file.write("%f,%d,%d,%d\n" % (event_loop.time(), user_ind, num_nodes, num_edges))
+            await sleep(60)
+
+    def write_full_graph_stats(self):
+        # Merge the KGs of all users
+        G = nx.compose_all([user.knowledge_graph.graph for user in self.users])
+        with open(os.path.join(self.settings.data_dir, "full_kg.json"), "w") as out_file:
+            out_file.write(json.dumps({"num_nodes": len(G.nodes), "num_edges": len(G.edges)}))
+
     async def run(self):
         self.parse_content()
         self.create_users()
@@ -85,7 +103,14 @@ class Experiment:
                             lambda u=user: ensure_future(u.start_graph_exchange(self.settings.edge_exchange_interval,
                                                                                 self.settings.edge_batch_size)))
 
+        # Start the loop to monitor the growth of the graph for each user
+        with open(os.path.join(self.settings.data_dir, "graph_size.csv"), "w") as out_file:
+            out_file.write("time,user,nodes,edges\n")
+        ensure_future(self.periodically_write_graph_stats())
+
         await sleep(self.settings.duration)
+
+        self.write_full_graph_stats()
 
         loop = get_event_loop()
         loop.stop()
